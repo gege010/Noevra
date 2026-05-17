@@ -132,7 +132,7 @@ See `.env.example` for all variables:
 | `GROQ_API_KEY` | ✅ | — | Groq API key |
 | `LLM_MODEL` | ❌ | `llama-3.3-70b-versatile` | Groq model |
 | `TAVILY_API_KEY` | ✅ | — | Tavily Search API key |
-| `LANGSMITH_API_KEY` | ❌ | — | LangSmith API key (for tracing) |
+| `LANGSMITH_API_KEY` | ✅ | — | LangSmith API key (required for tracing) |
 | `LANGSMITH_PROJECT` | ❌ | `research-assistant` | LangSmith project name |
 | `APP_ENV` | ❌ | `development` | `development` or `production` |
 | `DATABASE_URL` | ❌ | SQLite | Database connection string |

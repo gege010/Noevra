@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
     llm_model: str = Field(default="llama-3.3-70b-versatile", alias="LLM_MODEL")
     tavily_api_key: str = Field(default="", alias="TAVILY_API_KEY")
-    langsmith_api_key: str = Field(default="", alias="LANGSMITH_API_KEY")
+    langsmith_api_key: str = Field(alias="LANGSMITH_API_KEY")
     langsmith_tracing: bool = Field(default=True, alias="LANGSMITH_TRACING")
     langsmith_project: str = Field(default="research-assistant", alias="LANGSMITH_PROJECT")
     app_env: str = Field(default="development", alias="APP_ENV")
@@ -27,6 +27,15 @@ class Settings(BaseSettings):
         default="sqlite+aiosqlite:///./research_assistant.db",
         alias="DATABASE_URL",
     )
+
+    @model_validator(mode="after")
+    def validate_langsmith(self):
+        if not self.langsmith_api_key:
+            raise ValueError(
+                "LANGSMITH_API_KEY is required for observability. "
+                "Get your key at https://smith.langchain.com"
+            )
+        return self
 
     @property
     def is_production(self) -> bool:
