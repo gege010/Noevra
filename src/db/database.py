@@ -27,6 +27,19 @@ async def get_db() -> AsyncSession:
         yield session
 
 async def init_db() -> None:
-    """Create all tables."""
+    """Create all tables and migrate columns if needed."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Migrate columns if existing database has older schema
+        for col, col_type in [
+            ("provider", "VARCHAR(50) DEFAULT 'groq'"),
+            ("model", "VARCHAR(100) DEFAULT 'llama-3.3-70b-versatile'"),
+            ("depth", "VARCHAR(20) DEFAULT 'standard'"),
+            ("evidence_json", "JSON"),
+            ("step_logs_json", "JSON"),
+        ]:
+            try:
+                await conn.exec_driver_sql(f"ALTER TABLE research_jobs ADD COLUMN {col} {col_type};")
+            except Exception:
+                pass
+

@@ -1,10 +1,11 @@
 """Job repository for database operations."""
 from __future__ import annotations
 from datetime import datetime
-from typing import Sequence
-from sqlalchemy import select, update, func
+from typing import Sequence, Any
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.db.models import ResearchJob
+
 
 class JobRepository:
     def __init__(self, db: AsyncSession):
@@ -14,6 +15,8 @@ class JobRepository:
         self,
         job_id: str,
         query: str,
+        provider: str = "groq",
+        model: str = "llama-3.3-70b-versatile",
         depth: str = "standard",
         sources_limit: int = 20,
         include_academic: bool = True,
@@ -21,7 +24,14 @@ class JobRepository:
         output_format: str = "both",
         language: str = "en",
     ) -> ResearchJob:
-        job = ResearchJob(id=job_id, query=query, status="queued")
+        job = ResearchJob(
+            id=job_id,
+            query=query,
+            provider=provider,
+            model=model,
+            depth=depth,
+            status="queued",
+        )
         self._db.add(job)
         await self._db.commit()
         await self._db.refresh(job)
@@ -35,17 +45,30 @@ class JobRepository:
         await self._db.execute(update(ResearchJob).where(ResearchJob.id == job_id).values(status=status))
         await self._db.commit()
 
-    async def update_result(self, job_id: str, report_markdown: str, sources_json: list[dict], trace_url: str | None = None) -> None:
+    async def update_result(
+        self,
+        job_id: str,
+        report_markdown: str,
+        sources_json: list[dict],
+        evidence_json: list[dict] | None = None,
+        step_logs_json: list[dict] | None = None,
+        trace_url: str | None = None,
+    ) -> None:
+        values: dict[str, Any] = {
+            "status": "done",
+            "report_markdown": report_markdown,
+            "sources_json": sources_json,
+            "completed_at": datetime.utcnow(),
+        }
+        if evidence_json is not None:
+            values["evidence_json"] = evidence_json
+        if step_logs_json is not None:
+            values["step_logs_json"] = step_logs_json
+        if trace_url is not None:
+            values["trace_url"] = trace_url
+
         await self._db.execute(
-            update(ResearchJob)
-            .where(ResearchJob.id == job_id)
-            .values(
-                status="done",
-                report_markdown=report_markdown,
-                sources_json=sources_json,
-                trace_url=trace_url,
-                completed_at=datetime.utcnow(),
-            )
+            update(ResearchJob).where(ResearchJob.id == job_id).values(**values)
         )
         await self._db.commit()
 
@@ -55,19 +78,7 @@ class JobRepository:
         )
         await self._db.commit()
 
-    async def update_trace_url(self, job_id: str, trace_url: str) -> None:
-        await self._db.execute(
-            update(ResearchJob).where(ResearchJob.id == job_id).values(trace_url=trace_url)
-        )
-        await self._db.commit()
-
-    async def list_active(self) -> Sequence[ResearchJob]:
-        result = await self._db.execute(
-            select(ResearchJob).where(ResearchJob.status.in_(["planning", "researching", "writing", "reviewing"]))
-        )
-        return result.scalars().all()
-
-    async def list_recent(self, limit: int = 20) -> Sequence[ResearchJob]:
+    async def list_recent(self, limit: int = 25) -> Sequence[ResearchJob]:
         result = await self._db.execute(
             select(ResearchJob).order_by(ResearchJob.created_at.desc()).limit(limit)
         )

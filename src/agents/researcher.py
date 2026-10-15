@@ -1,126 +1,159 @@
-"""Researcher agent node — executes searches and gathers sources."""
+"""Researcher agent node — gathers academic literature and empirical data across scientific repositories."""
 from __future__ import annotations
-import json
+import asyncio
 import structlog
-from langchain_groq import ChatGroq
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
 from src.agents.state import AgentState
-from src.agents.tools import tavily_search, arxiv_search, read_document, execute_code
-from src.config import get_settings
+from src.agents.tools import crossref_search, arxiv_search, pubmed_search, tavily_search
 
 logger = structlog.get_logger()
-settings = get_settings()
 
-RESEARCHER_SYSTEM = """You are an autonomous Research Assistant. Your goal is to gather information to answer the user's query by executing the provided research plan.
-You have access to several tools. Use them to gather data. 
-If you have enough information to write a comprehensive report, or if you have tried multiple times without success, output the string "ENOUGH_INFO" (without quotes) as your response instead of calling a tool.
-
-Current Plan:
-{plan}
-
-Gap Analysis from previous review (if any):
-{gap_analysis}
-"""
 
 async def researcher_node(state: AgentState) -> dict:
-    """Execute search tasks using LLM routing."""
-    # Enforce max iterations
-    current_iteration = state.get("current_iteration", 0)
-    max_iterations = state.get("max_iterations", 8)
-    
-    if current_iteration >= max_iterations:
-        logger.warning("max_iterations_reached", job_id=state["job_id"], iterations=current_iteration)
-        return {"status": "writing", "next_node": "writer"}
+    """Execute research tasks across ArXiv, PubMed, CrossRef, and Web."""
+    plan = state.get("plan", [])
+    existing_sources = list(state.get("sources", []))
+    seen_urls = {s.get("url") for s in existing_sources if s.get("url")}
+    seen_dois = {s.get("doi") for s in existing_sources if s.get("doi")}
+    seen_titles = {s.get("title", "").lower().strip() for s in existing_sources if s.get("title")}
 
-    llm = ChatGroq(api_key=settings.groq_api_key, model=settings.llm_model, temperature=0.2)
-    tools = [tavily_search, arxiv_search, read_document, execute_code]
-    
-    # Filter tools based on settings
-    active_tools = []
-    if state.get("include_web", True):
-        active_tools.append(tavily_search)
-    if state.get("include_academic", True):
-        active_tools.append(arxiv_search)
-    active_tools.extend([read_document, execute_code])
-    
-    llm_with_tools = llm.bind_tools(active_tools)
-
-    # Reconstruct plan as a string for the prompt
-    raw_plan = state.get("plan") or []
-    plan_str = ""
-    for idx, item in enumerate(raw_plan):
-        content = item.content if hasattr(item, "content") else str(item)
-        plan_str += f"{idx + 1}. {content}\n"
-
-    system_msg = RESEARCHER_SYSTEM.format(
-        plan=plan_str,
-        gap_analysis=state.get("gap_analysis", "None")
-    )
-    
-    messages = [SystemMessage(content=system_msg)]
-    messages.append(HumanMessage(content=f"Query: {state['query']}"))
-
-    # Add history of sources/tool calls to provide context
-    sources = state.get("sources", [])
-    if sources:
-        sources_summary = "Sources gathered so far:\n"
-        for s in sources[-5:]: # Only show last 5 to save context
-            if isinstance(s, dict):
-                sources_summary += f"- {s.get('title', 'Unknown')} ({s.get('source_type', 'tool')})\n"
-        messages.append(HumanMessage(content=sources_summary))
-
-    response = await llm_with_tools.ainvoke(messages)
-    
-    # Check if LLM decided it has enough info or if it called tools
-    if "ENOUGH_INFO" in response.content or not response.tool_calls:
-        logger.info("researcher_decision", job_id=state["job_id"], decision="write")
-        return {"status": "writing", "next_node": "writer", "current_iteration": current_iteration + 1}
-    
-    # If tools were called, simulate the tool execution (LangGraph ToolNode handles the actual execution)
-    # We just need to update the state with the tool calls
-    logger.info("researcher_decision", job_id=state["job_id"], decision="tools", calls=len(response.tool_calls))
-    
-    # In a real LangGraph setup with ToolNode, we append the AIMessage with tool_calls
-    # to a "messages" list. Since our state uses "sources" list for results, 
-    # we need to adapt. The ToolNode expects a "messages" key.
-    # To keep our existing state structure simple, we'll execute tools manually here
-    # rather than relying on ToolNode to avoid changing the entire state architecture.
-    
     new_sources = []
-    for tool_call in response.tool_calls:
-        name = tool_call["name"]
-        args = tool_call["args"]
-        
+    engine_stats = {"crossref": 0, "arxiv": 0, "pubmed": 0, "web": 0}
+
+    from datetime import date
+    current_date = date.today().isoformat()
+
+    # Targeted search handling:
+    # If the verifier or reviewer identified unverified or contested claims,
+    # generate laser-targeted search queries specifically for those claims.
+    tasks_to_run = list(plan)
+    contested_claims = state.get("contested_claims", [])
+    unverified_claims = state.get("unverified_claims", [])
+    gap_analysis = state.get("gap_analysis")
+
+    if unverified_claims:
+        for u in unverified_claims[:2]:
+            claim_text = u.get("claim", str(u)) if isinstance(u, dict) else str(u)
+            tasks_to_run.insert(0, {
+                "lane": "primary",
+                "title": f"Resolve Unverified Claim: {claim_text[:40]}...",
+                "search_query": f"{state['query']} {claim_text[:60]}",
+                "target_engine": "crossref",
+                "rationale": "Directly fetch primary empirical proof for unverified claim",
+            })
+    elif contested_claims:
+        for c in contested_claims[:2]:
+            conflict_text = c.get("conflict", str(c)) if isinstance(c, dict) else str(c)
+            tasks_to_run.insert(0, {
+                "lane": "counter",
+                "title": f"Investigate Methodological Conflict: {conflict_text[:40]}...",
+                "search_query": f"{state['query']} {conflict_text[:60]} methodology comparison",
+                "target_engine": "crossref",
+                "rationale": "Compare contradictory empirical study designs and sample populations",
+            })
+    elif gap_analysis:
+        tasks_to_run.insert(0, {
+            "lane": "independent",
+            "title": "Address Academic Reviewer Gaps",
+            "search_query": f"{state['query']} {gap_analysis[:80]}",
+            "target_engine": "crossref",
+            "rationale": "Directly address methodological gaps identified during peer review",
+        })
+
+    depth = state.get("depth", "standard")
+    per_task_limit = 4 if depth == "quick" else (8 if depth == "deep" else 6)
+
+    for task in tasks_to_run:
+        query = task.get("search_query", state["query"])
+        target_engine = task.get("target_engine", "crossref")
+        lane = task.get("lane", "primary")
+
+        results = []
         try:
-            if name == "tavily_search" and tavily_search in active_tools:
-                res = await tavily_search(**args)
-                new_sources.extend(res)
-            elif name == "arxiv_search" and arxiv_search in active_tools:
-                res = await arxiv_search(**args)
-                new_sources.extend(res)
-            elif name == "read_document":
-                res = await read_document(**args)
-                new_sources.append({"title": f"Doc: {args.get('url_or_path', '')}", "snippet": res, "source_type": "document"})
-            elif name == "execute_code":
-                res = execute_code(**args)
-                new_sources.append({"title": "Code Execution Result", "snippet": res, "source_type": "code"})
+            if target_engine == "pubmed" and state.get("include_academic", True):
+                results = await pubmed_search(query, max_results=per_task_limit)
+                if not results:
+                    results = await crossref_search(query, max_results=per_task_limit)
+            elif target_engine == "arxiv" and state.get("include_academic", True):
+                results = await arxiv_search(query, max_results=per_task_limit)
+                if not results:
+                    results = await crossref_search(query, max_results=per_task_limit)
+            elif target_engine == "crossref" and state.get("include_academic", True):
+                results = await crossref_search(query, max_results=per_task_limit)
+            else:
+                if state.get("include_web", True):
+                    results = await tavily_search(query, max_results=per_task_limit)
+                if not results and state.get("include_academic", True):
+                    results = await crossref_search(query, max_results=per_task_limit)
         except Exception as e:
-            logger.error("tool_execution_failed", tool=name, error=str(e))
-            
-    # Combine old and new sources with deduplication by title/URL
-    seen = set()
-    all_sources = []
-    
-    for src in sources + new_sources:
-        # Use URL or Title as unique identifier
-        key = src.get("url") or src.get("title", "unknown")
-        if key not in seen:
-            seen.add(key)
-            all_sources.append(src)
-    
+            logger.warning("vector_search_failed", engine=target_engine, query=query, error=str(e))
+            # Fallback to crossref
+            try:
+                results = await crossref_search(query, max_results=per_task_limit)
+            except Exception:
+                results = []
+
+        # Deduplicate, format with immutable ID, and record exact passage
+        for r in results:
+            url = r.get("url", "")
+            doi = r.get("doi", "")
+            title = r.get("title", "").lower().strip()
+
+            if (url and url in seen_urls) or (doi and doi in seen_dois) or (title and title in seen_titles):
+                continue
+
+            if url:
+                seen_urls.add(url)
+            if doi:
+                seen_dois.add(doi)
+            if title:
+                seen_titles.add(title)
+
+            # Assign immutable Source ID (S-01, S-02, ...)
+            source_id = f"S-{len(existing_sources) + len(new_sources) + 1:02d}"
+            r["source_id"] = source_id
+            r["accessed_at"] = current_date
+            r["lane"] = lane
+            # Ensure exact passage is present
+            if not r.get("passage"):
+                r["passage"] = r.get("snippet", "")[:800]
+
+            new_sources.append(r)
+            stype = r.get("source_type", "web")
+            if stype in engine_stats:
+                engine_stats[stype] += 1
+            else:
+                engine_stats["web"] += 1
+
+    all_sources = existing_sources + new_sources
+    logger.info(
+        "researcher_completed",
+        job_id=state.get("job_id"),
+        new_sources=len(new_sources),
+        total_sources=len(all_sources),
+        stats=engine_stats,
+    )
+
+    step_log = {
+        "node": "researcher",
+        "title": "Empirical & Academic Evidence Retrieved",
+        "detail": f"Gathered {len(all_sources)} validated scientific sources across functional search lanes.",
+        "stats": engine_stats,
+        "sample_sources": [
+            {
+                "id": s.get("source_id"),
+                "title": s.get("title"),
+                "lane": s.get("lane"),
+                "doi": s.get("doi"),
+                "authors": s.get("authors", [])[:2],
+                "year": s.get("published_date"),
+            }
+            for s in all_sources[:5]
+        ],
+    }
+
     return {
-        "sources": all_sources, 
-        "status": "researching", 
-        "next_node": "researcher", # Forces loop back to researcher directly
-        "current_iteration": current_iteration + 1
+        "sources": all_sources,
+        "status": "verifying",
+        "step_logs": state.get("step_logs", []) + [step_log],
+        "current_iteration": state.get("current_iteration", 0) + 1,
     }

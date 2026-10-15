@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ScholarAgent // Autonomous Multi-Agent Research Assistant</title>
+  <meta name="description" content="Autonomous hierarchical multi-agent research assistant for publication-grade academic monographs, cross-verified with ArXiv, PubMed, CrossRef, and web sources.">
+  
+  <!-- Typography from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&display=swap" rel="stylesheet">
+  
+  <!-- Modern SVG Icons (Phosphor-style standard) -->
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="theme-dark">
+  <!-- Top Application Bar -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="brand-symbol">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-title">SCHOLAR<span class="brand-highlight">AGENT</span></span>
+        <span class="brand-badge">Autonomous Multi-Agent Research</span>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <div class="pipeline-pill" id="pipelineStatusPill">
+        <span class="status-dot"></span>
+        <span class="status-label" id="statusPillText">System Ready // 5 Agent Nodes Active</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn-ghost" id="historyToggleBtn" title="View Research Archive">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <span>Research Library</span>
+      </button>
+      <div class="provider-badge" id="activeProviderBadge">
+        <span class="provider-badge-icon" id="badgeIcon">⚡</span>
+        <span class="provider-badge-text" id="badgeText">Groq · Llama 3.3 70B</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workstation Layout -->
+  <main class="workstation-container">
+    <!-- Left Configuration Cockpit -->
+    <aside class="config-sidebar" id="configSidebar">
+      <div class="sidebar-header">
+        <h2 class="sidebar-title">Research Protocol</h2>
+        <span class="sidebar-subtitle">Configure model, scope & depth</span>
+      </div>
+
+      <form id="researchForm" class="research-form">
+        <!-- Topic / Inquiry Input -->
+        <div class="form-group">
+          <label for="queryInput" class="form-label">
+            <span>Research Question / Thesis</span>
+            <span class="label-hint">Be specific for deeper literature mapping</span>
+          </label>
+          <textarea 
+            id="queryInput" 
+            class="form-textarea" 
+            rows="3" 
+            placeholder="e.g. State-of-the-art transformer context extension techniques: RoPE scaling, YaRN, and LongLoRA empirical trade-offs..."
+            required
+          ></textarea>
+        </div>
+
+        <!-- Provider Selection -->
+        <div class="form-group">
+          <label class="form-label">
+            <span>LLM Provider</span>
+            <span class="label-hint">Provider-agnostic execution</span>
+          </label>
+          <div class="provider-grid" id="providerGrid">
+            <!-- Dynamically populated by app.js -->
+          </div>
+        </div>
+
+        <!-- Model Selection & Key Override -->
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="modelSelect" class="form-label">Model Architecture</label>
+            <select id="modelSelect" class="form-select">
+              <!-- Dynamically populated based on provider -->
+            </select>
+          </div>
+        </div>
+
+        <!-- API Key Accordion / Override -->
+        <div class="api-key-container">
+          <div class="api-key-header" id="apiKeyToggle">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <span id="apiKeyStatusLabel">Custom API Key (Optional Override)</span>
+            <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+          <div class="api-key-body" id="apiKeyBody">
+            <input 
+              type="password" 
+              id="apiKeyInput" 
+              class="form-input" 
+              placeholder="Paste API key here (persists in your browser only)..." 
+              autocomplete="off"
+            />
+            <div class="custom-url-field" id="customUrlField" style="display: none; margin-top: 8px;">
+              <input 
+                type="text" 
+                id="baseUrlInput" 
+                class="form-input" 
+                placeholder="Base URL: http://localhost:11434/v1" 
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Depth Levels -->
+        <div class="form-group">
+          <label class="form-label">
+            <span>Investigation Depth</span>
+            <span class="label-hint">Sets vector count & synthesis density</span>
+          </label>
+          <div class="depth-selector">
+            <label class="depth-card">
+              <input type="radio" name="depth" value="quick">
+              <div class="depth-content">
+                <div class="depth-title">⚡ Quick Brief</div>
+                <div class="depth-desc">3 vectors · 1,500w · Fast executive summary</div>
+              </div>
+            </label>
+            <label class="depth-card active">
+              <input type="radio" name="depth" value="standard" checked>
+              <div class="depth-content">
+                <div class="depth-title">🔬 Comprehensive</div>
+                <div class="depth-desc">5 vectors · 3,500w · Full monograph & tables</div>
+              </div>
+            </label>
+            <label class="depth-card">
+              <input type="radio" name="depth" value="deep">
+              <div class="depth-content">
+                <div class="depth-title">🎓 Deep Academic</div>
+                <div class="depth-desc">8 vectors · 5,000w+ · Meta-review & proof</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Academic Preferences (Domain, Style, Language) -->
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="domainSelect" class="form-label">Academic Domain</label>
+            <select id="domainSelect" class="form-select">
+              <option value="cs_ai">Computer Science & AI</option>
+              <option value="biomedical">Biomedical & Clinical (PubMed)</option>
+              <option value="economics">Economics & Finance</option>
+              <option value="physics">Physics & Mathematics</option>
+              <option value="policy">Public Policy & Law</option>
+              <option value="general" selected>General Scientific Cross-Disciplinary</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="citationStyleSelect" class="form-label">Citation Standard</label>
+            <select id="citationStyleSelect" class="form-select">
+              <option value="ieee" selected>IEEE [1] (Numbered)</option>
+              <option value="apa">APA 7th (Author, Year)</option>
+              <option value="nature">Nature Journal Standard</option>
+              <option value="harvard">Harvard Style</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="languageSelect" class="form-label">Monograph Language</label>
+            <select id="languageSelect" class="form-select">
+              <option value="en" selected>English (Formal Academic)</option>
+              <option value="id">Bahasa Indonesia (Akademik Formal)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" id="startResearchBtn" class="btn-primary">
+          <span class="btn-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+          </span>
+          <span class="btn-text">Initiate Autonomous Research</span>
+        </button>
+      </form>
+    </aside>
+
+    <!-- Center/Right Canvas Stage -->
+    <section class="stage-container" id="stageContainer">
+      <!-- 1. Idle / Welcome State -->
+      <div class="state-idle" id="idleState">
+        <div class="welcome-card">
+          <div class="welcome-badge">RESEARCH WORKBENCH v2.0</div>
+          <h1 class="welcome-title">Zero-Hallucination Academic Intelligence</h1>
+          <p class="welcome-desc">
+            An autonomous multi-agent pipeline orchestrating <strong>Planner</strong>, <strong>Researcher</strong>, <strong>Verifier</strong>, <strong>Writer</strong>, and <strong>Peer Reviewer</strong> across ArXiv, PubMed, CrossRef, and scientific web repositories.
+          </p>
+
+          <div class="sample-queries-section">
+            <div class="sample-header">Select an exemplary investigation or enter your custom inquiry:</div>
+            <div class="sample-chips" id="sampleChips">
+              <button class="sample-chip" data-query="Comparative efficacy of mRNA vs viral vector vaccines for emerging respiratory pathogens" data-domain="biomedical">
+                <span class="chip-domain">Biomedical</span>
+                <span class="chip-text">Comparative efficacy of mRNA vs viral vector vaccines</span>
+              </button>
+              <button class="sample-chip" data-query="State of reinforcement learning from human feedback (RLHF) vs Direct Preference Optimization (DPO)" data-domain="cs_ai">
+                <span class="chip-domain">AI / CS</span>
+                <span class="chip-text">RLHF vs Direct Preference Optimization (DPO) Trade-offs</span>
+              </button>
+              <button class="sample-chip" data-query="Impact of carbon tax policies on manufacturing competitiveness: An empirical meta-analysis" data-domain="economics">
+                <span class="chip-domain">Economics</span>
+                <span class="chip-text">Carbon tax policies & industrial competitiveness</span>
+              </button>
+              <button class="sample-chip" data-query="Quantum error correction thresholds in surface codes vs color codes" data-domain="physics">
+                <span class="chip-domain">Physics</span>
+                <span class="chip-text">Quantum error correction thresholds in surface codes</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="features-ribbon">
+            <div class="feature-item">
+              <span class="feature-icon">🛡️</span>
+              <div>
+                <strong>Audited Truth</strong>
+                <p>Peer-reviewed journal cross-verification via CrossRef & PubMed.</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">⚙️</span>
+              <div>
+                <strong>Provider Freedom</strong>
+                <p>Use Groq, Claude 3.7, GPT-4o, Gemini 2.0, or local Ollama.</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">📑</span>
+              <div>
+                <strong>Scholarly Standards</strong>
+                <p>Structured abstract, comparative tables, and BibTeX export.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Active Execution Radar State -->
+      <div class="state-running" id="runningState" style="display: none;">
+        <div class="radar-card">
+          <div class="radar-header">
+            <div class="radar-topic-wrap">
+              <h2 class="radar-query-title" id="activeQueryTitle">Investigating research question...</h2>
+            </div>
+            <div class="radar-meta">
+              <span class="meta-pill" id="activeModelPill">Groq · Llama 3.3 70B</span>
+              <span class="meta-pill" id="activeDepthPill">Comprehensive (5 Vectors)</span>
+            </div>
+          </div>
+
+          <!-- 5-Node Agent Pipeline Visualizer -->
+          <div class="agent-pipeline-track">
+            <div class="agent-node" id="nodePlanner">
+              <div class="node-indicator">
+                <span class="node-index">01</span>
+                <span class="node-dot"></span>
+              </div>
+              <div class="node-info">
+                <div class="node-name">Planner</div>
+                <div class="node-status-text">Vector formulation</div>
+              </div>
+            </div>
+            <div class="pipeline-connector"></div>
+
+            <div class="agent-node" id="nodeResearcher">
+              <div class="node-indicator">
+                <span class="node-index">02</span>
+                <span class="node-dot"></span>
+              </div>
+              <div class="node-info">
+                <div class="node-name">Researcher</div>
+                <div class="node-status-text">Multi-source retrieval</div>
+              </div>
+            </div>
+            <div class="pipeline-connector"></div>
+
+            <div class="agent-node" id="nodeVerifier">
+              <div class="node-indicator">
+                <span class="node-index">03</span>
+                <span class="node-dot"></span>
+              </div>
+              <div class="node-info">
+                <div class="node-name">Verifier</div>
+                <div class="node-status-text">Fact-check & evidence matrix</div>
+              </div>
+            </div>
+            <div class="pipeline-connector"></div>
+
+            <div class="agent-node" id="nodeWriter">
+              <div class="node-indicator">
+                <span class="node-index">04</span>
+                <span class="node-dot"></span>
+              </div>
+              <div class="node-info">
+                <div class="node-name">Writer</div>
+                <div class="node-status-text">Scholarly monograph</div>
+              </div>
+            </div>
+            <div class="pipeline-connector"></div>
+
+            <div class="agent-node" id="nodeReviewer">
+              <div class="node-indicator">
+                <span class="node-index">05</span>
+                <span class="node-dot"></span>
+              </div>
+              <div class="node-info">
+                <div class="node-name">Referee</div>
+                <div class="node-status-text">Journal peer review</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress bar -->
+          <div class="pipeline-progress-bar">
+            <div class="progress-fill" id="pipelineProgressFill" style="width: 15%;"></div>
+          </div>
+
+          <!-- Real-Time Telemetry & Event Stream Terminal -->
+          <div class="telemetry-box">
+            <div class="telemetry-header">
+              <span>Agentic Reasoning & Search Stream</span>
+              <span class="pulse-indicator">● LIVE SSE STREAM</span>
+            </div>
+            <div class="telemetry-log" id="telemetryLog">
+              <div class="log-entry">Connecting to autonomous LangGraph supervisor...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Completed State: Academic Paper Canvas & Evidence Matrix -->
+      <div class="state-completed" id="completedState" style="display: none;">
+        <!-- Top Action & Export Ribbon -->
+        <div class="paper-action-ribbon">
+          <div class="ribbon-metrics">
+            <div class="metric-badge">
+              <span class="metric-num" id="paperWordCount">0</span>
+              <span class="metric-lbl">Words</span>
+            </div>
+            <div class="metric-badge">
+              <span class="metric-num" id="paperSourceCount">0</span>
+              <span class="metric-lbl">Citations</span>
+            </div>
+            <div class="metric-badge">
+              <span class="metric-num" id="paperTier1Count">0</span>
+              <span class="metric-lbl">Peer-Reviewed</span>
+            </div>
+            <div class="metric-badge highlight">
+              <span class="metric-num" id="paperScore">9.0</span>
+              <span class="metric-lbl">Referee Score</span>
+            </div>
+          </div>
+
+          <div class="ribbon-controls">
+            <button class="btn-action" id="downloadPdfBtn" title="Download Formatted PDF">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+              </svg>
+              <span>Download PDF</span>
+            </button>
+            <button class="btn-action" id="downloadMdBtn" title="Download Raw Markdown">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Markdown</span>
+            </button>
+            <button class="btn-action" id="exportBibtexBtn" title="Export BibTeX for LaTeX">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              </svg>
+              <span>BibTeX</span>
+            </button>
+            <button class="btn-action" id="copyPaperBtn" title="Copy Paper to Clipboard">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span>Copy</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Navigation Tabs: Paper | Evidence Ledger | Bibliographic Index | Telemetry -->
+        <div class="paper-tabs">
+          <button class="tab-btn active" data-target="tabPaper">Scholarly Monograph</button>
+          <button class="tab-btn" data-target="tabEvidence">Evidence Ledger & Fact-Checks</button>
+          <button class="tab-btn" data-target="tabSources">Bibliographic Index (<span id="sourceTabCount">0</span>)</button>
+          <button class="tab-btn" data-target="tabTelemetry">Peer Review & Execution Log</button>
+        </div>
+
+        <!-- Tab 1: Academic Monograph Reader -->
+        <div class="tab-content active" id="tabPaper">
+          <!-- Research Contract Card Banner -->
+          <div class="research-contract-card" id="researchContractCard" style="display: none;"></div>
+
+          <div class="paper-layout">
+            <!-- Floating Table of Contents -->
+            <aside class="paper-toc" id="paperToc">
+              <div class="toc-title">Table of Contents</div>
+              <ul class="toc-list" id="tocList"></ul>
+            </aside>
+
+            <!-- Rendered Monograph Article -->
+            <article class="paper-article" id="paperArticle">
+              <!-- Dynamically rendered markdown -->
+            </article>
+          </div>
+        </div>
+
+        <!-- Tab 2: Evidence Ledger & Fact-Checks -->
+        <div class="tab-content" id="tabEvidence">
+          <div class="evidence-matrix-container">
+            <div class="evidence-header-card">
+              <div class="evidence-title-row">
+                <div>
+                  <h3>Empirical Evidence Ledger</h3>
+                  <p>Audited by the scientific verifier against exact primary source passages. Ground truth before synthesis.</p>
+                </div>
+                <div class="ledger-filter-buttons" id="ledgerFilterButtons">
+                  <button class="ledger-filter-btn active" data-status="all">All Claims</button>
+                  <button class="ledger-filter-btn" data-status="supported">Supported</button>
+                  <button class="ledger-filter-btn" data-status="contested">Contested</button>
+                  <button class="ledger-filter-btn" data-status="unverified">Unverified</button>
+                </div>
+              </div>
+              <div class="credibility-summary-row" id="credibilitySummaryRow"></div>
+            </div>
+            <div class="evidence-cards-grid" id="evidenceCardsGrid"></div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Bibliographic Index -->
+        <div class="tab-content" id="tabSources">
+          <div class="sources-index-container">
+            <div class="sources-search-bar">
+              <input type="text" id="sourceSearchInput" placeholder="Filter sources by author, title, journal or DOI..." class="form-input">
+            </div>
+            <div class="sources-list" id="sourcesList"></div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Peer Review & Telemetry -->
+        <div class="tab-content" id="tabTelemetry">
+          <div class="referee-report-container">
+            <div class="referee-card" id="refereeCard"></div>
+            <div class="step-logs-timeline" id="stepLogsTimeline"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Research Library Slide-Over Drawer -->
+  <div class="drawer-overlay" id="historyDrawerOverlay"></div>
+  <aside class="history-drawer" id="historyDrawer">
+    <div class="drawer-header">
+      <h3>Research Library</h3>
+      <button class="btn-close" id="closeHistoryBtn">&times;</button>
+    </div>
+    <div class="drawer-body">
+      <div class="history-list" id="historyList">
+        <div class="empty-history">Loading previous research papers...</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Interactive Citation Tooltip Container -->
+  <div class="citation-tooltip" id="citationTooltip"></div>
+
+  <!-- Client Application Logic -->
+  <script src="/static/app.js"></script>
+</body>
+</html>

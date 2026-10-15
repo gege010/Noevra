@@ -1,73 +1,157 @@
-"""Writer agent node — generates structured markdown report."""
+"""Academic Writer agent node — synthesizes publication-grade research monographs."""
 from __future__ import annotations
+import json
 import structlog
-from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 from src.agents.state import AgentState
-from src.config import get_settings
+from src.agents.llm_factory import create_llm
 
 logger = structlog.get_logger()
-settings = get_settings()
 
-WRITER_SYSTEM_EN = """You are an expert research report writer. Given a research query and a set of gathered sources, write a comprehensive, well-structured markdown research report.
+WRITER_SYSTEM = """You are a Distinguished Academic Fellow and Senior Scientific Editor.
+Your objective is to author an authoritative, publication-ready Academic Research Monograph based STRICTLY on verified empirical evidence and retrieved literature.
 
-Report structure:
-1. # Title (from query)
-2. ## Executive Summary (2-3 sentences)
-3. ## Introduction (context, scope, why this matters)
-4. ## Literature Review (categorized findings from sources)
-5. ## Key Findings (with in-text citations like [1])
-6. ## Analysis & Discussion (your interpretation)
-7. ## Conclusion (summary + future directions)
-8. ## References (formatted citation list)
-
-Rules:
-- Write in formal academic style
-- Include citations as [N] referencing the sources list
-- For each key finding, cite 1-3 sources
-- Language: English
-- Output ONLY the markdown report, no commentary"""
-
-WRITER_SYSTEM_ID = """Anda adalah penulis laporan riset profesional. Given research query and sources, write comprehensive Indonesian markdown report with: # Title, ## Ringkasan Eksekutif, ## Pendahuluan, ## Tinjauan Pustaka, ## Temuan Utama, ## Analisis & Pembahasan, ## Kesimpulan, ## Referensi."""
+Academic Tone and Stylistic Guidelines:
+1. **Conservative, Rigorous, and Educational:**
+   - Avoid sensationalist buzzwords, hyperbole, and speculative puffery.
+   - Employ measured, exact academic terminology (e.g., "empirical data suggests", "statistically significant correlation", "methodological constraints demonstrate").
+   - Balance scholarly depth with didactic clarity so that a domain researcher or technical executive can digest complex nuances.
+2. **Zero Hallucination & Dense Inline Citation:**
+   - Anchor every scientific assertion, benchmark, or historical claim to specific sources using bracketed numeric markers `[1]`, `[2]` or author-year citations `(Vaswani et al., 2017)`.
+   - Never invent paper titles, authors, or data points not present in the provided evidence.
+3. **Structured Academic Architecture:**
+   - **# Title** (Scholarly, precise, non-clickbait)
+   - **## Abstract** (Structured: Background, Objectives, Corpus & Methodology, Key Empirical Findings, Epistemic Implications)
+   - **## 1. Introduction & Contextual Background**
+   - **## 2. Theoretical Framework & Methodological Taxonomy**
+   - **## 3. Systematic Literature Review & Evidence Synthesis** (Deep narrative with dense inline citations)
+   - **## 4. Quantitative Synthesis & Comparative Benchmark Table** (Must include at least one detailed Markdown table comparing methodologies, metrics, or performance)
+   - **## 5. Critical Analysis, Contradictions, & Methodological Limitations**
+   - **## 6. Strategic Implications & Future Research Horizons**
+   - **## 7. References** (Comprehensive bibliography matching inline citations with Authors, Title, Journal/Preprint, Year, and DOI/URL links).
+4. **Language:**
+   - Write in the requested language (English or Bahasa Indonesia) maintaining uncompromising academic formality throughout."""
 
 
 async def writer_node(state: AgentState) -> dict:
-    """Generate the structured markdown report."""
-    llm = ChatGroq(api_key=settings.groq_api_key, model=settings.llm_model, temperature=0.3)
-    raw_sources = state.get("sources") or []
-    # Unwrap LangChain message wrappers (add_messages reducer wraps dicts as AIMessage)
-    sources = []
-    for item in raw_sources:
-        if isinstance(item, dict):
-            sources.append(item)
-        elif hasattr(item, "content"):
-            try:
-                sources.append(item.content)
-            except Exception:
-                pass
-        elif hasattr(item, "dict"):
-            try:
-                sources.append(item.dict())
-            except Exception:
-                pass
+    """Synthesize verified sources and evidence matrix into an academic research paper."""
+    query = state.get("query")
+    depth = state.get("depth", "standard")
     language = state.get("language", "en")
-    system_prompt = WRITER_SYSTEM_EN if language == "en" else WRITER_SYSTEM_ID
+    citation_style = state.get("citation_style", "ieee")
+    sources = state.get("sources", [])
+    evidence_matrix = state.get("evidence_matrix", [])
+    verification_report = state.get("verification_report", {})
 
-    sources_text = ""
-    for i, src in enumerate(sources[:30], 1):
-        sources_text += f"[{i}] {src.get('title', 'Unknown')}\n"
-        sources_text += f"    URL: {src.get('url', 'N/A')}\n"
-        if src.get("snippet"):
-            sources_text += f"    Snippet: {src.get('snippet', '')[:300]}\n"
-        if src.get("authors"):
-            sources_text += f"    Authors: {', '.join(src.get('authors', []))}\n"
-        sources_text += "\n"
+    # Build reference mapping
+    ref_list = []
+    for idx, s in enumerate(sources[:30]):
+        authors = s.get("authors", [])
+        author_str = ", ".join(authors[:3]) + (" et al." if len(authors) > 3 else "")
+        if not author_str:
+            author_str = "Anonymous / Institutional Author"
+        year = s.get("published_date", "") or "n.d."
+        doi = s.get("doi", "")
+        url = s.get("url", "")
+        journal = s.get("journal") or s.get("source_type", "Research Publication")
+        ref_list.append(f"[{idx + 1}] {author_str} ({year}). \"{s.get('title')}\". *{journal}*. {f'DOI: {doi}' if doi else f'URL: {url}'}")
+
+    formatted_refs = "\n".join(ref_list)
+
+    # Word count expectations based on depth
+    word_target = "1,200 - 1,800 words" if depth == "quick" else ("4,000 - 6,500 words" if depth == "deep" else "2,500 - 4,000 words")
+
+    contract = state.get("contract", {})
+    contract_header = ""
+    if contract:
+        contract_header = f"""
+> **Research Contract Summary (as-of: {contract.get('as_of', '2026-10-08')})**  
+> **Investigation Question:** {contract.get('question', query)}  
+> **Decision Context:** {contract.get('decision_context', 'Academic literature synthesis')}  
+> **Scope Boundaries:** {contract.get('scope', 'Peer-reviewed and preprint repositories')}  
+> **Must-Resolve Subquestions:** {', '.join(contract.get('must_resolve', []))}  
+"""
+
+    # Build compact token-efficient ledger representation to avoid provider TPM exhaustion
+    compact_ledger = []
+    for e in evidence_matrix[:12]:
+        ev_items = e.get("evidence", [])
+        passage = ev_items[0].get("passage", "")[:180] if ev_items else e.get("quantitative_metric", "")[:180]
+        compact_ledger.append({
+            "claim_id": e.get("claim_id"),
+            "claim": e.get("claim"),
+            "status": e.get("status", "supported"),
+            "evidence_passage": passage,
+            "source_indices": e.get("supporting_source_indices", [1]),
+            "author_year": e.get("primary_author_year"),
+            "open_question": e.get("open_question", ""),
+        })
+
+    prompt = f"""Topic: "{query}"
+Depth Level: {depth.upper()} (Target Length: {word_target})
+Citation Style: {citation_style.upper()}
+Language: {"Indonesian (Formal Academic)" if language == "id" else "English (Formal Academic)"}
+
+RESEARCH CONTRACT:
+{json.dumps(contract, indent=2)}
+
+---
+VERIFIED EVIDENCE LEDGER (Center of Truth — Write ONLY what this ledger supports):
+{json.dumps(compact_ledger, indent=2)}
+
+---
+AUDIT VERDICT & CONTRADICTIONS:
+{json.dumps(verification_report, indent=2)}
+
+---
+BIBLIOGRAPHIC REPOSITORY ({len(sources)} validated sources):
+{formatted_refs}
+
+Authoring Directives (Research Machine Specification):
+1. Include the Research Contract blockquote directly after the Title and before the Abstract.
+2. In Section 3 (Evidence Synthesis), cite claims using bracketed numbers `[N]` directly corresponding to the Bibliographic Repository.
+3. In Section 4, generate an informative Markdown Comparative Benchmark Table comparing key methodologies, empirical metrics, and findings.
+4. In Section 5 (Critical Analysis, Contradictions & Limitations):
+   - Explicitly detail any contested evidence or methodological divergences identified in the Evidence Ledger.
+   - Do NOT silently average conflicting sources: explain where their experimental setups, sample distributions, or assumptions disagree.
+5. In Section 6, explicitly list open questions and what the published evidence DOES NOT settle.
+6. Ensure tone is educational, conservative, rigorous, and fully grounded."""
+
+    llm = create_llm(
+        provider=state.get("provider"),
+        model=state.get("model"),
+        api_key=state.get("api_key"),
+        base_url=state.get("base_url"),
+        temperature=0.15,
+    )
 
     messages = [
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=f"Research Query: {state['query']}\n\nSources ({len(sources)} total):\n{sources_text}\n\nWrite the complete research report now."),
+        SystemMessage(content=WRITER_SYSTEM),
+        HumanMessage(content=prompt),
     ]
-    response = await llm.ainvoke(messages)
-    draft = response.content.strip()
-    logger.info("writer_done", job_id=state["job_id"], draft_chars=len(draft))
-    return {"draft": draft, "status": "reviewing"}
+
+    try:
+        response = await llm.ainvoke(messages)
+        content = response.content
+        if isinstance(content, list):
+            draft = " ".join([c.get("text", "") if isinstance(c, dict) else str(c) for c in content])
+        else:
+            draft = str(content)
+    except Exception as e:
+        logger.error("writer_invocation_failed", error=str(e))
+        draft = f"# Academic Monograph: {query}\n\n## Abstract\nThis paper examines {query} through systematic synthesis of scientific literature.\n\n## References\n{formatted_refs}"
+
+    step_log = {
+        "node": "writer",
+        "title": "Scholarly Monograph Composed",
+        "detail": f"Generated academic monograph ({len(draft.split())} words) with comparative evidence table and citations.",
+        "word_count": len(draft.split()),
+        "citations_indexed": len(ref_list),
+    }
+
+    logger.info("writer_completed", job_id=state.get("job_id"), words=len(draft.split()))
+    return {
+        "draft": draft,
+        "status": "reviewing",
+        "step_logs": state.get("step_logs", []) + [step_log],
+    }

@@ -37,4 +37,10 @@ def test_agent_state_keys():
         "plan", "sources", "draft", "review_score", "revision_count",
         "gap_analysis", "status", "trace_url", "error", "job_id",
     }
-    assert set(state.keys()) == required_keys
+    assert required_keys.issubset(set(state.keys()))
+    # Verify new multi-provider & empirical verification keys
+    assert "provider" in state
+    assert "model" in state
+    assert "evidence_matrix" in state
+    assert "step_logs" in state
+    assert "contract" in state
