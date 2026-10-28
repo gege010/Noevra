@@ -1,4 +1,4 @@
-# ScholarAgent
+# Noevra
 
 <!-- impeccable:product-schema 1 -->
 
@@ -18,7 +18,7 @@ Users choose a model/provider and research depth, submit a question, follow exec
 Existing FastAPI backend, plain HTML/CSS/JavaScript frontend, LangGraph research pipeline and SQLAlchemy job storage. Preserve API integrations and the actual distinction between supported, contested, unverified and stale claims. A completed job is not a guarantee of peer review or publication readiness. Do not invent live statistics or seeded history.
 
 ## Brand Commitments
-Product name: ScholarAgent. The user explicitly authorizes a full UI/UX overhaul and delegates the best visual direction. References: impeccable.style, tasteskill.dev, Emil Kowalski's design/animation guidance and UI UX Pro Max. Premium, distinctive, interactive, functional; avoid AI-slop.
+Product name: Noevra. The user explicitly authorizes a full UI/UX overhaul and delegates the best visual direction. References: impeccable.style, tasteskill.dev, Emil Kowalski's design/animation guidance and UI UX Pro Max. Premium, distinctive, interactive, functional; avoid AI-slop.
 
 ## Evidence on Hand
 Existing source code, report examples and the user's research architecture reference PDF. Example reports are real repository examples, not user activity or verified outcomes.

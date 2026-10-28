@@ -34,7 +34,7 @@
       code_challenge: challenge,
       code_challenge_method: "S256",
       state,
-      key_label: "ScholarAgent",
+      key_label: "Noevra",
     });
     return url.href;
   }

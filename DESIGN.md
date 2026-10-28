@@ -1,4 +1,4 @@
-# ScholarAgent design system
+# Noevra design system
 
 ## Direction
 Research atelier: the quiet working space between a university reading room and a contemporary document editor. Product interface, not a promotional landing page. The user delegated the direction for a complete replacement of the previous dark cockpit.

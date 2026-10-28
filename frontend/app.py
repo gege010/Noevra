@@ -1,4 +1,4 @@
-"""Streamlit UI for Research Assistant."""
+"""Streamlit UI for Noevra."""
 from __future__ import annotations
 import streamlit as st
 import httpx
@@ -82,11 +82,11 @@ def render_progress(status: str, progress: int, step: str, trace_url: str | None
 
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Research Assistant",
+    page_title="Noevra",
     page_icon="🔬",
     layout="wide",
     menu_items={
-        "About": "Multi-Agent Research Assistant powered by LangGraph + Groq",
+        "About": "Noevra powered by LangGraph + Groq",
     },
 )
 
@@ -102,7 +102,7 @@ st.markdown("""
 init_state()
 
 # ── Header ─────────────────────────────────────────────────────────────────────
-st.markdown('<div class="main-header">🔬 Multi-Agent Research Assistant</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">🔬 Noevra</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">Powered by LangGraph · Groq Llama-3.3 70B · Tavily + ArXiv search</div>', unsafe_allow_html=True)
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────

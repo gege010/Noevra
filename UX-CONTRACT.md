@@ -1,4 +1,4 @@
-# ScholarAgent interaction contract
+# Noevra interaction contract
 
 ## Canonical owners
 | Capability | Owner | Verification |

@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "multi-agent-research-assistant"
+name = "noevra"
 version = "0.1.0"
-description = "Multi-Agent Research Assistant with LangGraph orchestration"
+description = "Noevra — Multi-Agent Research Assistant with LangGraph orchestration"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }

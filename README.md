@@ -1,11 +1,11 @@
-# ScholarAgent — Autonomous Multi-Agent Academic Research Workbench
+# Noevra — Autonomous Multi-Agent Academic Research Workbench
 
 [![CI](https://github.com/gege010/Multi-Agent-Research-Assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/gege010/Multi-Agent-Research-Assistant/actions/workflows/ci.yml)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg)](https://fastapi.tiangolo.com)
 [![LangGraph](https://img.shields.io/badge/LangGraph-Hierarchical%205--Agent-1c3d5a.svg)](https://github.com/langchain-ai/langgraph)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> **ScholarAgent** is an agentic, provider-agnostic academic research assistant. It transforms any user-defined topic or scientific inquiry into a source-grounded research draft grounded strictly in peer-reviewed literature and empirical data, backed by a 5-node autonomous multi-agent pipeline and an obsidian academic web workbench.
+> **Noevra** is an agentic, provider-agnostic academic research assistant. It transforms any user-defined topic or scientific inquiry into a source-grounded research draft grounded strictly in peer-reviewed literature and empirical data, backed by a 5-node autonomous multi-agent pipeline and an obsidian academic web workbench.
 
 ---
 
@@ -150,7 +150,7 @@ LANGSMITH_TRACING=false
 LANGSMITH_API_KEY=
 ```
 
-### 3. Launch ScholarAgent
+### 3. Launch Noevra
 
 ```bash
 uvicorn src.main:app --reload --port 8000
@@ -197,7 +197,7 @@ Streams `node_start`, `node_complete`, progress percentages, step logs, and the 
 
 ## 🧪 Testing & Validation
 
-ScholarAgent includes a comprehensive test suite covering schemas, tools, agent nodes, and database repositories:
+Noevra includes a comprehensive test suite covering schemas, tools, agent nodes, and database repositories:
 
 ```bash
 pytest tests/ -v

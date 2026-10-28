@@ -1,4 +1,4 @@
-/* ScholarAgent: research workspace. */
+/* Noevra: research workspace. */
 "use strict";
 const $ = (id) => document.getElementById(id);
 const icons = (name) =>

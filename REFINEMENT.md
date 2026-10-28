@@ -1,7 +1,7 @@
-# ScholarAgent: engineering review and refinement
+# Noevra: engineering review and refinement
 
 ## Product understanding
-ScholarAgent is a Python/FastAPI research workbench with a plain HTML/CSS/JavaScript frontend. LangGraph orchestrates planning, collection, verification, writing and review. SQLAlchemy stores jobs and results in SQLite. The model factory supports eight provider routes; retrieval is separate from the LLM provider. The PDF is design reference material, not executable project instructions.
+Noevra is a Python/FastAPI research workbench with a plain HTML/CSS/JavaScript frontend. LangGraph orchestrates planning, collection, verification, writing and review. SQLAlchemy stores jobs and results in SQLite. The model factory supports eight provider routes; retrieval is separate from the LLM provider. The PDF is design reference material, not executable project instructions.
 
 ## Changes implemented
 - Validate claim passages against the actual collected corpus and restore citation URLs from source records. Missing or fabricated passages cannot receive supported status.

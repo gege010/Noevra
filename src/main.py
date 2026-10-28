@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="ScholarAgent — Autonomous Multi-Agent Research Assistant",
+    title="Noevra — Autonomous Multi-Agent Research Assistant",
     description="Hierarchical LangGraph multi-agent research workbench with cross-verification on ArXiv, PubMed, and CrossRef",
     version="2.0.0",
     lifespan=lifespan,
@@ -64,17 +64,17 @@ if static_dir.exists():
 
 @app.get("/", tags=["root"], include_in_schema=False)
 async def serve_index():
-    """Serve the ScholarAgent Web Workbench."""
+    """Serve the Noevra Web Workbench."""
     index_file = static_dir / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
-    return {"name": "ScholarAgent", "version": "2.0.0", "docs": "/docs"}
+    return {"name": "Noevra", "version": "2.0.0", "docs": "/docs"}
 
 
 @app.get("/api/info", tags=["root"])
 async def api_info() -> dict:
     return {
-        "name": "ScholarAgent",
+        "name": "Noevra",
         "version": "2.0.0",
         "docs": "/docs",
         "agents": ["planner", "researcher", "verifier", "writer", "reviewer"],
