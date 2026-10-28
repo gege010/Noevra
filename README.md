@@ -253,3 +253,11 @@ pytest tests/ -v
 ## 📜 License
 
 Distributed under the MIT License. See `LICENSE` for details.
+
+## Workspace customization and OAuth
+
+Minimize the sidebar using its panel control. Workspace settings (bottom left) customize theme, reading size, motion, layout and research defaults. The model control in New research opens per-investigation setup. Dropdowns share one keyboard-accessible listbox, and report contents highlight the current section as you read.
+
+To use OAuth, open **Settings → Connections → OpenRouter → Connect → Continue with OpenRouter**. Approve the connection on OpenRouter; model usage uses your OpenRouter credits. HTTPS and localhost/127.0.0.1 callbacks are supported. The application uses [OpenRouter’s official S256 PKCE flow](https://openrouter.ai/docs/guides/overview/auth/oauth), validates state and a ten-minute window, and exchanges codes through a fixed backend endpoint. The returned key stays only in tab memory: reload/close requires reconnection. Disconnect here removes the tab credential; revoke generated keys in your OpenRouter account to invalidate them at the provider. Other providers continue to use API keys or local endpoints. No provider password or OAuth key is saved in localStorage.
+
+Additional frontend checks: `node --test tests/ui-renderer.test.cjs tests/oauth-client.test.cjs`.
