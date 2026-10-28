@@ -50,3 +50,6 @@ langchain-google-genai>=1.0.0
 # OAuth signature validation and private-workspace sessions
 PyJWT[crypto]>=2.10.1,<3
 itsdangerous>=2.2,<3
+
+# PDF export regression checks
+pypdf>=6,<7

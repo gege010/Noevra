@@ -124,7 +124,7 @@ Return ONLY valid JSON matching this schema:
         if "contract" in parsed and isinstance(parsed["contract"], dict):
             contract = parsed["contract"]
     except Exception as e:
-        logger.error("planner_structured_output_failed", error=str(e))
+        logger.error("planner_structured_output_failed", error_type=type(e).__name__)
         # Fallback vectors organized by functional lanes
         domain = state.get("domain_focus", "general")
         primary_engine = "pubmed" if domain == "biomedical" else ("arxiv" if domain == "cs_ai" else "crossref")

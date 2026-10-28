@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 import re
+import os
 
 import httpx
 from fastapi import HTTPException
@@ -32,7 +33,7 @@ AUTH_DOCS = {"openai": "https://developers.openai.com/siwc/token-sharing-open-so
 
 
 def configured_key(provider: str) -> str:
-    return getattr(get_settings(), f"{provider}_api_key", "")
+    return getattr(get_settings(), f"{provider}_api_key", "") or (os.getenv("GOOGLE_API_KEY", "") if provider == "gemini" else "")
 
 
 def validate_endpoint(value: str) -> str:
@@ -58,7 +59,7 @@ def provider_metadata() -> dict:
                 "gemini": "Google OAuth requires a registered web client and a billing/quota project on this server.",
                 "anthropic": "Claude.ai subscription OAuth is not permitted in third-party apps. Use a Claude API key or a supported cloud provider.",
                 "openrouter": "Connect your OpenRouter account with PKCE; usage is billed to your credits."}.get(key, "Use an API key or a local endpoint.")
-        result[key] = {"name": name, "models": [], "default_model": "", "requires_key": key not in ("ollama", "custom"),
+        result[key] = {"name": name, "models": [], "default_model": settings.llm_model if key == settings.default_provider else "", "requires_key": key not in ("ollama", "custom"),
                        "configured_in_backend": bool(configured_key(key)), "auth_methods": ["api_key"] + (["oauth"] if oauth else []),
                        "oauth": {"supported": oauth, "configured": oauth and configured, "note": note, "docs": AUTH_DOCS.get(key)}}
     return result
@@ -68,7 +69,7 @@ def normalize_models(provider: str, payload: dict, auth_type: str) -> list[dict]
     rows = payload.get("models", []) if provider == "gemini" or (provider == "openai" and auth_type == "oauth") else payload.get("data", [])
     output, seen = [], set()
     for row in rows:
-        if not isinstance(row, dict):
+        if not isinstance(row, dict) or row.get("active") is False:
             continue
         if provider == "gemini" and "generateContent" not in row.get("supportedGenerationMethods", []):
             continue
@@ -77,7 +78,7 @@ def normalize_models(provider: str, payload: dict, auth_type: str) -> list[dict]
         identifier = row.get("slug") or row.get("id") or row.get("name", "").removeprefix("models/")
         if not identifier or identifier in seen:
             continue
-        if provider in ("openai", "groq") and auth_type != "oauth" and re.search(r"embedding|whisper|tts|dall-e|sora|transcrib|image-|moderation|realtime|audio|babbage|davinci", identifier):
+        if provider in ("openai", "groq") and auth_type != "oauth" and re.search(r"embedding|whisper|tts|dall-e|sora|transcrib|image-|moderation|realtime|audio|babbage|davinci|guard", identifier):
             continue
         architecture = row.get("architecture") or {}
         if architecture.get("output_modalities") and "text" not in architecture["output_modalities"]:
@@ -134,5 +135,7 @@ async def discover_models(provider: str, connection: ProviderConnection) -> dict
     except (httpx.HTTPError, ValueError, TypeError):
         raise HTTPException(502, "Model discovery could not reach the provider. No cached model list was substituted.") from None
     unique = list({m["id"]: m for m in models}.values())
+    if provider in ("groq", "openai", "deepseek") and connection.auth_type != "oauth":
+        unique.sort(key=lambda m: m.get("created") if isinstance(m.get("created"), (int, float)) else 0, reverse=True)
     return {"provider": provider, "models": unique, "source": "live", "checked_at": datetime.now(timezone.utc).isoformat(),
             "note": "Listed by the provider for this connection. Runtime quotas and model capabilities may still limit a request."}

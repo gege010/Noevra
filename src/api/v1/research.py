@@ -275,11 +275,12 @@ async def download_pdf(job_id: str, db: AsyncSession = Depends(get_db)) -> FileR
     try:
         from src.services.report_service import ReportService
         report_service = ReportService()
-        filepath.write_bytes(report_service.markdown_to_pdf(markdown))
+        pdf_bytes = await asyncio.to_thread(report_service.markdown_to_pdf, markdown)
+        await asyncio.to_thread(filepath.write_bytes, pdf_bytes)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"PDF generation error: {str(exc)}",
+            detail="PDF could not be generated. Download Markdown and try again.",
         )
 
     return FileResponse(

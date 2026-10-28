@@ -133,6 +133,9 @@ Authoring Directives (Research Machine Specification):
 
     try:
         response = await llm.ainvoke(messages)
+        metadata = response.response_metadata or {}
+        if metadata.get("finish_reason") in ("length", "MAX_TOKENS") or metadata.get("stop_reason") == "max_tokens":
+            raise RuntimeError("The provider truncated the report before completion.")
         content = response.content
         if isinstance(content, list):
             draft = " ".join([c.get("text", "") if isinstance(c, dict) else str(c) for c in content])

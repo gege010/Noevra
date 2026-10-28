@@ -61,7 +61,7 @@ def create_llm(
         return ChatOpenAI(
             api_key=key,
             model=model_name,
-            temperature=temperature,
+            temperature=None,
             streaming=streaming,
         )
 

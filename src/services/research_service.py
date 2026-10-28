@@ -157,7 +157,10 @@ class ResearchService:
                         current_state.update(node_output)
                 return current_state
 
-            final_state = await asyncio.wait_for(run_graph(), timeout=settings.research_timeout_seconds)
+            from langsmith import tracing_context
+            # Tab-supplied secrets must never be serialized into graph traces.
+            with tracing_context(enabled=settings.langsmith_tracing and not bool(api_key)):
+                final_state = await asyncio.wait_for(run_graph(), timeout=settings.research_timeout_seconds)
 
             draft = final_state.get("draft", "")
             raw_sources = final_state.get("sources", [])

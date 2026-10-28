@@ -261,3 +261,10 @@ Minimize the sidebar using its panel control. Workspace settings (bottom left) c
 To use OAuth, open **Settings → Connections → OpenRouter → Connect → Continue with OpenRouter**. Approve the connection on OpenRouter; model usage uses your OpenRouter credits. HTTPS and localhost/127.0.0.1 callbacks are supported. The application uses [OpenRouter’s official S256 PKCE flow](https://openrouter.ai/docs/guides/overview/auth/oauth), validates state and a ten-minute window, and exchanges codes through a fixed backend endpoint. The returned key stays only in tab memory: reload/close requires reconnection. Disconnect here removes the tab credential; revoke generated keys in your OpenRouter account to invalidate them at the provider. Other providers continue to use API keys or local endpoints. No provider password or OAuth key is saved in localStorage.
 
 Additional frontend checks: `node --test tests/ui-renderer.test.cjs tests/oauth-client.test.cjs`.
+
+
+## Provider connections and deployment
+
+The web workspace now discovers account-specific model catalogs from connected providers, with search and refresh. Settings separates Appearance, Research defaults and Connections from per-investigation Research setup. OAuth is available for OpenRouter, official local ChatGPT plan access, and Google Gemini when a Cloud web client and quota project are configured. Claude.ai subscription OAuth is not offered under Anthropic's third-party credential policy; use an API key.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for exact authentication requirements, production environment variables, session protection, the single-worker/private-workspace deployment boundary, and verification instructions. Install the tested direct dependency set with `pip install -r requirements.txt -c constraints.txt`.

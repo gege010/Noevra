@@ -136,7 +136,7 @@ Return ONLY valid JSON matching this schema:
         targeted_unverified = parsed.get("unverified_claims", [])
         targeted_contested = parsed.get("contested_claims", [])
     except Exception as e:
-        logger.error("reviewer_evaluation_failed", error=str(e))
+        logger.error("reviewer_evaluation_failed", error_type=type(e).__name__)
         score = 0.0
         verdict = "UNAVAILABLE"
         critique = {
@@ -148,12 +148,13 @@ Return ONLY valid JSON matching this schema:
 
 
     passed = (score >= 7.5 and verdict == "ACCEPTED")
-    stop = passed or verdict == "UNAVAILABLE" or revision_count >= max_revisions
+    budget_exhausted = len(state.get("sources", [])) >= state.get("sources_limit", 20) or state.get("current_iteration", 0) >= state.get("max_iterations", 10)
+    stop = passed or verdict == "UNAVAILABLE" or revision_count >= max_revisions or budget_exhausted
 
     step_log = {
         "node": "reviewer",
         "title": "Peer Review Complete",
-        "detail": f"Referee evaluated paper: Score {score}/10 ({'Passed' if passed else 'Revision Requested'}).",
+        "detail": f"Automated review: {verdict}; score {score}/10." + (" Source or iteration budget reached; unresolved findings remain for human review." if budget_exhausted and not passed else ""),
         "score": score,
         "critique": critique,
     }

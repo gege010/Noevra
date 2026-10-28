@@ -179,7 +179,7 @@ Return ONLY valid JSON matching this schema:
             "unverified_count": len(unverified_claims),
         }
     except Exception as e:
-        logger.error("verifier_analysis_failed", error=str(e))
+        logger.error("verifier_analysis_failed", error_type=type(e).__name__)
         # Build programmatic Evidence Ledger fallback from available sources
         for idx, s in enumerate(sources[:8]):
             tier = 1 if s.get("source_type") in ("journal", "pubmed") else (2 if s.get("source_type") == "arxiv" else 3)
