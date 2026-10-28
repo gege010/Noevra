@@ -5,9 +5,11 @@
 [![LangGraph](https://img.shields.io/badge/LangGraph-Hierarchical%205--Agent-1c3d5a.svg)](https://github.com/langchain-ai/langgraph)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> **ScholarAgent** is an agentic, provider-agnostic academic research assistant. It transforms any user-defined topic or scientific inquiry into a publication-grade academic monograph grounded strictly in peer-reviewed literature and empirical data, backed by a 5-node autonomous multi-agent pipeline and an obsidian academic web workbench.
+> **ScholarAgent** is an agentic, provider-agnostic academic research assistant. It transforms any user-defined topic or scientific inquiry into a source-grounded research draft grounded strictly in peer-reviewed literature and empirical data, backed by a 5-node autonomous multi-agent pipeline and an obsidian academic web workbench.
 
 ---
+
+> Development status: prototype under refinement. Reports require source inspection and human review. See [engineering review and production blockers](REFINEMENT.md).
 
 ## 🌟 Key Capabilities
 
@@ -30,7 +32,7 @@ Eliminates speculation by tapping directly into world-class scientific repositor
 - **ArXiv API** — Preprints across computer science, machine learning, physics, and mathematics.
 - **Tavily & Open Web Fallback** — Scrapes authoritative institutional whitepapers and reports.
 
-### 3. 🛡️ The Evidence Ledger & Research Machine Engineering (Zero Hallucination)
+### 3. 🛡️ The Evidence Ledger & Research Machine Engineering (Traceable Evidence)
 Adheres to the *"Research Engineering: Build an AI Research Machine"* architecture:
 - **Bounded Research Contract:** Turns inquiries into bounded contracts (`as_of` temporal anchor, decision context, explicit scope, and must-resolve subquestions).
 - **Functional Search Lanes:** "Split the question before you split the agents" — organizes search into *Primary Evidence Lane*, *Independent Validation Lane*, and *Counter-Evidence & Limitations Lane*.
