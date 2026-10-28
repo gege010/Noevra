@@ -21,6 +21,10 @@ class AgentState(TypedDict):
     include_web: bool
     max_iterations: int
 
+    sources_limit: int
+    unverified_claims: list[dict[str, Any]]
+    contested_claims: list[dict[str, Any]]
+
     # Research Contract & Investigation state (from Research Machine philosophy)
     contract: dict[str, Any]  # bounded contract: question, as_of, scope, must_resolve, stop_when
     plan: list[dict[str, Any]]  # lane-based search vectors (primary, independent, counter-evidence)
@@ -61,6 +65,7 @@ def default_state(
     include_academic: bool = True,
     include_web: bool = True,
     max_iterations: int = 10,
+    sources_limit: int = 20,
 ) -> AgentState:
     """Factory for initial agent state."""
     return AgentState(
@@ -76,6 +81,9 @@ def default_state(
         include_academic=include_academic,
         include_web=include_web,
         max_iterations=max_iterations,
+        sources_limit=sources_limit,
+        unverified_claims=[],
+        contested_claims=[],
         contract={},
         plan=[],
         sources=[],

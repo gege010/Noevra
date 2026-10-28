@@ -5,6 +5,7 @@ from datetime import date
 import structlog
 from langchain_core.messages import SystemMessage, HumanMessage
 from src.agents.state import AgentState
+from src.agents.evidence import validate_claim
 from src.agents.llm_factory import create_llm
 
 logger = structlog.get_logger()
@@ -147,6 +148,9 @@ Return ONLY valid JSON matching this schema:
         raw_ledger = parsed.get("evidence_ledger", parsed.get("evidence_matrix", []))
         
         for idx, item in enumerate(raw_ledger):
+            if not isinstance(item, dict):
+                continue
+            item = validate_claim(item, sources[:20], idx, current_date)
             if "claim_id" not in item:
                 item["claim_id"] = f"C-{idx + 1:02d}"
             if "status" not in item:
@@ -168,7 +172,7 @@ Return ONLY valid JSON matching this schema:
         verification_report = {
             "credibility_overview": parsed.get("credibility_overview", {}),
             "cross_study_contradictions": contradictions,
-            "verified_claims_count": len(evidence_matrix),
+            "verified_claims_count": sum(e.get("status") == "supported" for e in evidence_matrix),
             "supported_count": sum(1 for e in evidence_matrix if e.get("status") == "supported"),
             "contested_count": len(contested_claims),
             "unverified_count": len(unverified_claims),
@@ -187,7 +191,7 @@ Return ONLY valid JSON matching this schema:
             item = {
                 "claim_id": f"C-{idx + 1:02d}",
                 "claim": s.get("title", ""),
-                "status": "supported",
+                "status": "unverified",
                 "evidence": [
                     {
                         "source_id": src_id,
@@ -202,27 +206,28 @@ Return ONLY valid JSON matching this schema:
                 ],
                 "last_checked": current_date,
                 "open_question": "",
-                "reason": f"Directly documented in {s.get('source_type', 'literature')}",
+                "reason": "Verifier failed; source metadata does not establish a claim.",
                 "supporting_source_indices": [idx + 1],
                 "primary_author_year": f"{auth_str}, {year}",
                 "quantitative_metric": passage[:120],
                 "credibility_tier": tier,
-                "methodological_caveats": "Verified via scientific database metadata",
+                "methodological_caveats": "Not independently verified",
             }
             evidence_matrix.append(item)
+            unverified_claims.append(item)
 
         verification_report = {
             "credibility_overview": {
                 "tier_1_peer_reviewed_count": sum(1 for s in sources if s.get("source_type") in ("journal", "pubmed")),
                 "tier_2_preprints_count": sum(1 for s in sources if s.get("source_type") == "arxiv"),
                 "tier_3_institutional_count": sum(1 for s in sources if s.get("source_type") not in ("journal", "pubmed", "arxiv")),
-                "verification_verdict": "Automated scientific metadata verification passed",
+                "verification_verdict": "Verification unavailable; all fallback claims remain unverified",
             },
             "cross_study_contradictions": [],
-            "verified_claims_count": len(evidence_matrix),
-            "supported_count": len(evidence_matrix),
+            "verified_claims_count": sum(e.get("status") == "supported" for e in evidence_matrix),
+            "supported_count": 0,
             "contested_count": 0,
-            "unverified_count": 0,
+            "unverified_count": len(unverified_claims),
         }
 
     step_log = {

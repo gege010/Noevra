@@ -14,7 +14,7 @@ def test_health_endpoint():
 
 def test_research_endpoint_accepts_valid_query():
     # Use patch to prevent actual background task execution in DB
-    with patch("src.services.research_service.ResearchService.create_job") as mock_create:
+    with patch("src.services.research_service.ResearchService.create_job") as mock_create, patch("src.services.research_service.ResearchService.run_research"):
         mock_create.return_value = None
         response = client.post(
             "/api/v1/research",

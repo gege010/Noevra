@@ -1,7 +1,7 @@
 """Pydantic request schemas for autonomous research."""
 from __future__ import annotations
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class ResearchRequest(BaseModel):
@@ -19,6 +19,17 @@ class ResearchRequest(BaseModel):
     include_academic: bool = Field(default=True)
     include_web: bool = Field(default=True)
     output_format: str = Field(default="both", pattern="^(markdown|pdf|both)$")
+
+    @model_validator(mode="after")
+    def validate_sources(self):
+        self.query = self.query.strip()
+        if len(self.query) < 3:
+            raise ValueError("Research question must contain at least three non-whitespace characters")
+        if not self.include_academic and not self.include_web:
+            raise ValueError("Enable at least one source collection")
+        if self.provider not in {"groq", "openai", "anthropic", "gemini", "deepseek", "openrouter", "ollama", "custom"}:
+            raise ValueError("Unsupported LLM provider")
+        return self
 
     model_config = {
         "json_schema_extra": {

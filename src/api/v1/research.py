@@ -62,6 +62,9 @@ async def start_research(
         citation_style=request.citation_style,
         language=request.language,
         max_iterations=request.max_iterations,
+        include_academic=request.include_academic,
+        include_web=request.include_web,
+        sources_limit=request.sources_limit,
     )
     return ResearchResponse(
         job_id=job_id,

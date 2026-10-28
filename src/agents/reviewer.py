@@ -37,14 +37,14 @@ async def reviewer_node(state: AgentState) -> dict:
     contract = state.get("contract", {})
     evidence_matrix = state.get("evidence_matrix", [])
     revision_count = state.get("revision_count", 0)
-    max_revisions = 2
+    max_revisions = min(2, max(0, state.get("max_iterations", 3) - 1))
 
     # If draft is empty or too short
     if not draft or len(draft.split()) < 200:
         return {
             "review_score": 3.0,
             "review_critique": {"verdict": "REJECT", "feedback": "Draft too brief or missing substantive content."},
-            "status": "researching",
+            "status": "done" if revision_count >= max_revisions else "researching",
             "gap_analysis": "Draft lacked sufficient length and substance. Expand search on core methodology.",
             "revision_count": revision_count + 1,
         }
@@ -54,10 +54,10 @@ async def reviewer_node(state: AgentState) -> dict:
         logger.info("reviewer_max_revisions_reached", job_id=state.get("job_id"))
         step_log = {
             "node": "reviewer",
-            "title": "Peer Review Editorial Approval",
-            "detail": f"Paper accepted following {revision_count} revision cycles.",
-            "score": state.get("review_score", 8.5),
-            "verdict": "ACCEPTED",
+            "title": "Research budget exhausted",
+            "detail": f"Stopped after {revision_count} revision cycles; human review required.",
+            "score": state.get("review_score", 0),
+            "verdict": "BUDGET_EXHAUSTED",
         }
         return {
             "status": "done",
@@ -136,16 +136,18 @@ Return ONLY valid JSON matching this schema:
         targeted_contested = parsed.get("contested_claims", [])
     except Exception as e:
         logger.error("reviewer_evaluation_failed", error=str(e))
-        score = 8.2
-        verdict = "ACCEPTED"
+        score = 0.0
+        verdict = "UNAVAILABLE"
         critique = {
-            "overall_score": 8.2,
-            "verdict": "ACCEPTED",
-            "strengths": ["Comprehensive coverage of literature", "Strict Evidence Ledger grounding"],
-            "weaknesses": [],
+            "overall_score": None,
+            "verdict": "UNAVAILABLE",
+            "strengths": [],
+            "weaknesses": ["Automated review failed; human review is required."],
         }
 
-    passed = (score >= 7.5) or (verdict == "ACCEPTED") or (revision_count >= max_revisions)
+
+    passed = (score >= 7.5 and verdict == "ACCEPTED")
+    stop = passed or verdict == "UNAVAILABLE" or revision_count >= max_revisions
 
     step_log = {
         "node": "reviewer",
@@ -157,7 +159,7 @@ Return ONLY valid JSON matching this schema:
 
     logger.info("reviewer_decision", job_id=state.get("job_id"), score=score, passed=passed)
 
-    if passed:
+    if stop:
         return {
             "review_score": score,
             "review_critique": critique,

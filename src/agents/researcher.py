@@ -62,7 +62,10 @@ async def researcher_node(state: AgentState) -> dict:
     depth = state.get("depth", "standard")
     per_task_limit = 4 if depth == "quick" else (8 if depth == "deep" else 6)
 
+    source_budget = state.get("sources_limit", 20)
     for task in tasks_to_run:
+        if len(existing_sources) + len(new_sources) >= source_budget:
+            break
         query = task.get("search_query", state["query"])
         target_engine = task.get("target_engine", "crossref")
         lane = task.get("lane", "primary")
@@ -88,12 +91,14 @@ async def researcher_node(state: AgentState) -> dict:
             logger.warning("vector_search_failed", engine=target_engine, query=query, error=str(e))
             # Fallback to crossref
             try:
-                results = await crossref_search(query, max_results=per_task_limit)
+                results = await crossref_search(query, max_results=per_task_limit) if state.get("include_academic", True) else []
             except Exception:
                 results = []
 
         # Deduplicate, format with immutable ID, and record exact passage
         for r in results:
+            if len(existing_sources) + len(new_sources) >= source_budget:
+                break
             url = r.get("url", "")
             doi = r.get("doi", "")
             title = r.get("title", "").lower().strip()
@@ -136,7 +141,7 @@ async def researcher_node(state: AgentState) -> dict:
     step_log = {
         "node": "researcher",
         "title": "Empirical & Academic Evidence Retrieved",
-        "detail": f"Gathered {len(all_sources)} validated scientific sources across functional search lanes.",
+        "detail": f"Gathered {len(all_sources)} retrieved sources across functional search lanes.",
         "stats": engine_stats,
         "sample_sources": [
             {

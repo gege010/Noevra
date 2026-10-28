@@ -19,7 +19,7 @@ _job_event_queues: dict[str, list[asyncio.Queue]] = {}
 
 def register_listener(job_id: str) -> asyncio.Queue:
     """Register an SSE listener queue for a specific job."""
-    q: asyncio.Queue = asyncio.Queue()
+    q: asyncio.Queue = asyncio.Queue(maxsize=128)
     if job_id not in _job_event_queues:
         _job_event_queues[job_id] = []
     _job_event_queues[job_id].append(q)
@@ -40,7 +40,9 @@ async def broadcast_event(job_id: str, event: dict[str, Any]) -> None:
     queues = _job_event_queues.get(job_id, [])
     for q in queues:
         try:
-            await q.put(event)
+            if q.full():
+                q.get_nowait()
+            q.put_nowait(event)
         except Exception:
             pass
 
@@ -77,6 +79,9 @@ class ResearchService:
         citation_style: str = "ieee",
         language: str = "en",
         max_iterations: int = 10,
+        include_academic: bool = True,
+        include_web: bool = True,
+        sources_limit: int = 20,
     ) -> None:
         """Execute the multi-agent research pipeline with real-time telemetry."""
         job = await self._repo.get(job_id)
@@ -109,9 +114,10 @@ class ResearchService:
                 domain_focus=domain_focus,
                 citation_style=citation_style,
                 language=language,
-                include_academic=True,
-                include_web=True,
+                include_academic=include_academic,
+                include_web=include_web,
                 max_iterations=max_iterations,
+                sources_limit=sources_limit,
             )
 
             graph = get_supervisor_graph()
@@ -119,7 +125,7 @@ class ResearchService:
             # Execute graph nodes with progress broadcasting
             async def run_graph():
                 current_state = state
-                async for output in graph.astream(current_state):
+                async for output in graph.astream(current_state, config={"recursion_limit": max_iterations * 4 + 5}):
                     for node_name, node_output in output.items():
                         logger.info("node_executed", node=node_name, job_id=job_id)
                         progress_map = {
@@ -127,7 +133,7 @@ class ResearchService:
                             "researcher": (50, "Academic & web evidence gathered", "verifying"),
                             "verifier": (70, "Empirical data & citations verified", "writing"),
                             "writer": (90, "Scholarly monograph synthesized", "reviewing"),
-                            "reviewer": (95, "Peer review critique completed", "done"),
+                            "reviewer": (95, "Peer review critique completed", "reviewing"),
                         }
                         pct, desc, next_status = progress_map.get(node_name, (50, f"Completed {node_name}", "working"))
                         await self._repo.update_status(job_id, next_status)
@@ -147,15 +153,7 @@ class ResearchService:
                         current_state.update(node_output)
                 return current_state
 
-            if settings.langsmith_tracing and settings.langsmith_api_key:
-                try:
-                    from langsmith.run_helpers import trace
-                    with trace("research-assistant", project_name=settings.langsmith_project):
-                        final_state = await run_graph()
-                except Exception:
-                    final_state = await run_graph()
-            else:
-                final_state = await run_graph()
+            final_state = await run_graph()
 
             draft = final_state.get("draft", "")
             raw_sources = final_state.get("sources", [])

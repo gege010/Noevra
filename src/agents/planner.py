@@ -40,27 +40,6 @@ async def planner_node(state: AgentState) -> dict:
     depth = state.get("depth", "standard")
     target_count = 3 if depth == "quick" else (8 if depth == "deep" else 5)
     
-    # Handle direct test mocking of ChatGroq if active
-    if ChatGroq is not None and hasattr(ChatGroq, "return_value") and ChatGroq.return_value is not None:
-        try:
-            mock_inst = ChatGroq()
-            structured = mock_inst.with_structured_output(None)
-            res = await structured.ainvoke(None)
-            raw_tasks = getattr(res, "tasks", [])
-            tasks = [{"title": str(t), "search_query": f"{state['query']} {t}", "target_engine": "crossref"} for t in raw_tasks]
-            return {
-                "plan": tasks,
-                "status": "researching",
-                "step_logs": state.get("step_logs", []) + [{
-                    "node": "planner",
-                    "title": "Research Strategy & Vectors Formulated",
-                    "detail": f"Formulated {len(tasks)} targeted investigation vectors.",
-                    "tasks": tasks,
-                }],
-            }
-        except Exception:
-            pass
-
     llm = create_llm(
         provider=state.get("provider"),
         model=state.get("model"),
