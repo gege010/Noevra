@@ -1,12 +1,14 @@
 """Unit tests for JobRepository."""
 import pytest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 from src.repositories.job_repository import JobRepository
 from src.db.models import ResearchJob
 
 @pytest.fixture
 def mock_db():
-    return AsyncMock()
+    db = AsyncMock()
+    db.add = MagicMock()
+    return db
 
 @pytest.mark.asyncio
 async def test_create_job(mock_db):

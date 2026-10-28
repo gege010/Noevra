@@ -24,6 +24,7 @@ class ResearchJob(Base):
     sources_json: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
     evidence_json: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
     step_logs_json: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
+    settings_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     error: Mapped[str | None] = mapped_column("error_message", Text, nullable=True)
 
     @property

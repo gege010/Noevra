@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import AsyncGenerator
-from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import FileResponse, PlainTextResponse
 from sse_starlette.sse import EventSourceResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,38 +34,42 @@ async def list_providers() -> dict:
 async def start_research(
     request: ResearchRequest,
     db: AsyncSession = Depends(get_db),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> ResearchResponse:
+    from src.services.job_runtime import runtime
     job_id = str(uuid.uuid4())
     service = ResearchService(db)
-    await service.create_job(
-        job_id=job_id,
-        query=request.query,
-        provider=request.provider,
-        model=request.model,
-        depth=request.depth,
-        sources_limit=request.sources_limit,
-        include_academic=request.include_academic,
-        include_web=request.include_web,
-        output_format=request.output_format,
-        language=request.language,
-    )
-    background_tasks.add_task(
-        service.run_research,
-        job_id=job_id,
-        provider=request.provider,
-        model=request.model,
-        api_key=request.api_key,
-        base_url=request.base_url,
-        depth=request.depth,
-        domain_focus=request.domain_focus,
-        citation_style=request.citation_style,
-        language=request.language,
-        max_iterations=request.max_iterations,
-        include_academic=request.include_academic,
-        include_web=request.include_web,
-        sources_limit=request.sources_limit,
-    )
+    async with runtime.admission:
+        if runtime.full:
+            raise HTTPException(429, "The research queue is full. Wait for a running job to finish.")
+        await service.create_job(
+            job_id=job_id,
+            query=request.query,
+            provider=request.provider,
+            model=request.model,
+            depth=request.depth,
+            sources_limit=request.sources_limit,
+            include_academic=request.include_academic,
+            include_web=request.include_web,
+            output_format=request.output_format,
+            language=request.language,
+            research_settings=request.model_dump(exclude={"api_key", "base_url"}),
+        )
+        runtime.start(
+            job_id,
+            provider=request.provider,
+            model=request.model,
+            api_key=request.api_key,
+            auth_type=request.auth_type,
+            base_url=request.base_url,
+            depth=request.depth,
+            domain_focus=request.domain_focus,
+            citation_style=request.citation_style,
+            language=request.language,
+            max_iterations=request.max_iterations,
+            include_academic=request.include_academic,
+            include_web=request.include_web,
+            sources_limit=request.sources_limit,
+        )
     return ResearchResponse(
         job_id=job_id,
         status="queued",
@@ -85,6 +89,8 @@ async def stream_job_telemetry(job_id: str, db: AsyncSession = Depends(get_db)):
     async def event_generator() -> AsyncGenerator[dict, None]:
         q = register_listener(job_id)
         try:
+            # Subscribe before refreshing the snapshot to close the completion race.
+            job = await service.get_job(job_id)
             # If job already completed, yield completed state immediately
             if job.status == "done":
                 yield {
@@ -113,7 +119,7 @@ async def stream_job_telemetry(job_id: str, db: AsyncSession = Depends(get_db)):
             # Otherwise, stream live events from queue
             while True:
                 try:
-                    event = await asyncio.wait_for(q.get(), timeout=45.0)
+                    event = await asyncio.wait_for(q.get(), timeout=10.0)
                     yield {
                         "event": event.get("type", "update"),
                         "data": json.dumps(event),
@@ -121,6 +127,10 @@ async def stream_job_telemetry(job_id: str, db: AsyncSession = Depends(get_db)):
                     if event.get("type") in ("done", "error"):
                         break
                 except asyncio.TimeoutError:
+                    latest = await service.get_job(job_id)
+                    if latest and latest.status in ("done", "failed"):
+                        yield {"event": "done" if latest.status == "done" else "error", "data": json.dumps({"type": "done" if latest.status == "done" else "error", "job_id": job_id, "error": latest.error})}
+                        break
                     # Keep-alive heartbeat
                     yield {"event": "ping", "data": json.dumps({"type": "ping"})}
         finally:
@@ -293,7 +303,7 @@ async def cancel_job(job_id: str, db: AsyncSession = Depends(get_db)) -> dict:
 
 @router.get("", summary="List all jobs")
 async def list_jobs(
-    limit: int = 25,
+    limit: int = Query(default=25, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     repo = JobRepository(db)

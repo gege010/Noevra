@@ -2,6 +2,7 @@
 from __future__ import annotations
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 import structlog
 
@@ -31,11 +32,12 @@ def register_exception_handlers(app) -> None:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"error": exc.message, "detail": exc.detail},
         )
+    @app.exception_handler(RequestValidationError)
     @app.exception_handler(ValidationError)
     async def validation_error_handler(request: Request, exc: ValidationError):
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={"error": "Validation error", "detail": exc.errors()},
+            content={"error": "Validation error", "detail": [{"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]} for e in exc.errors()]},
         )
     @app.exception_handler(TavilyRateLimitError)
     async def tavily_error_handler(request: Request, exc: TavilyRateLimitError):

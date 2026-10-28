@@ -44,6 +44,7 @@ async def planner_node(state: AgentState) -> dict:
         provider=state.get("provider"),
         model=state.get("model"),
         api_key=state.get("api_key"),
+        auth_type=state.get("auth_type", "api_key"),
         base_url=state.get("base_url"),
         temperature=0.1,
     )

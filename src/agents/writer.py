@@ -80,7 +80,7 @@ async def writer_node(state: AgentState) -> dict:
         compact_ledger.append({
             "claim_id": e.get("claim_id"),
             "claim": e.get("claim"),
-            "status": e.get("status", "supported"),
+            "status": e.get("status", "unverified"),
             "evidence_passage": passage,
             "source_indices": e.get("supporting_source_indices", [1]),
             "author_year": e.get("primary_author_year"),
@@ -121,6 +121,7 @@ Authoring Directives (Research Machine Specification):
         provider=state.get("provider"),
         model=state.get("model"),
         api_key=state.get("api_key"),
+        auth_type=state.get("auth_type", "api_key"),
         base_url=state.get("base_url"),
         temperature=0.15,
     )
@@ -137,9 +138,11 @@ Authoring Directives (Research Machine Specification):
             draft = " ".join([c.get("text", "") if isinstance(c, dict) else str(c) for c in content])
         else:
             draft = str(content)
-    except Exception as e:
-        logger.error("writer_invocation_failed", error=str(e))
-        draft = f"# Academic Monograph: {query}\n\n## Abstract\nThis paper examines {query} through systematic synthesis of scientific literature.\n\n## References\n{formatted_refs}"
+    except Exception as exc:
+        logger.error("writer_invocation_failed", error_type=type(exc).__name__)
+        raise RuntimeError("The writing provider did not complete the report.") from None
+    if not draft.strip():
+        raise RuntimeError("The writing provider returned an empty report.")
 
     step_log = {
         "node": "writer",

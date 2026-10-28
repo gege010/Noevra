@@ -63,6 +63,8 @@ class ResearchService:
         return await self._repo.list_recent(limit=limit)
 
     async def cancel_job(self, job_id: str) -> None:
+        from src.services.job_runtime import runtime
+        runtime.cancel(job_id)
         await self._repo.update_status(job_id, "failed")
         await self._repo.update_error(job_id, "Cancelled by user")
         await broadcast_event(job_id, {"type": "error", "message": "Cancelled by user"})
@@ -82,6 +84,7 @@ class ResearchService:
         include_academic: bool = True,
         include_web: bool = True,
         sources_limit: int = 20,
+        auth_type: str = "api_key",
     ) -> None:
         """Execute the multi-agent research pipeline with real-time telemetry."""
         job = await self._repo.get(job_id)
@@ -118,6 +121,7 @@ class ResearchService:
                 include_web=include_web,
                 max_iterations=max_iterations,
                 sources_limit=sources_limit,
+                auth_type=auth_type,
             )
 
             graph = get_supervisor_graph()
@@ -136,7 +140,7 @@ class ResearchService:
                             "reviewer": (95, "Peer review critique completed", "reviewing"),
                         }
                         pct, desc, next_status = progress_map.get(node_name, (50, f"Completed {node_name}", "working"))
-                        await self._repo.update_status(job_id, next_status)
+                        await self._repo.update_status(job_id, ("researching" if node_output.get("status") == "researching" else next_status))
                         
                         # Extract latest step log from output
                         logs = node_output.get("step_logs", [])
@@ -153,7 +157,7 @@ class ResearchService:
                         current_state.update(node_output)
                 return current_state
 
-            final_state = await run_graph()
+            final_state = await asyncio.wait_for(run_graph(), timeout=settings.research_timeout_seconds)
 
             draft = final_state.get("draft", "")
             raw_sources = final_state.get("sources", [])
@@ -190,13 +194,12 @@ class ResearchService:
 
             logger.info("research_completed_successfully", job_id=job_id, words=len(draft.split()), sources=len(sources_json))
         except Exception as exc:
-            import traceback
-            tb = traceback.format_exc()
-            logger.error("research_pipeline_failed", job_id=job_id, error=str(exc), traceback=tb)
-            await self._repo.update_error(job_id, str(exc))
+            logger.error("research_pipeline_failed", job_id=job_id, error_type=type(exc).__name__)
+            message = "Research exceeded its time budget. Try a smaller scope." if isinstance(exc, asyncio.TimeoutError) else "Research could not complete. Check the provider connection, model permissions, and source availability before retrying."
+            await self._repo.update_error(job_id, message)
             await broadcast_event(job_id, {
                 "type": "error",
                 "job_id": job_id,
                 "status": "failed",
-                "error": str(exc),
+                "error": message,
             })

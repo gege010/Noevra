@@ -63,9 +63,13 @@ async def researcher_node(state: AgentState) -> dict:
     per_task_limit = 4 if depth == "quick" else (8 if depth == "deep" else 6)
 
     source_budget = state.get("sources_limit", 20)
-    for task in tasks_to_run:
-        if len(existing_sources) + len(new_sources) >= source_budget:
-            break
+    semaphore = asyncio.Semaphore(3)
+
+    async def retrieve(task):
+        async with semaphore:
+            return await execute_search(task)
+
+    async def execute_search(task):
         query = task.get("search_query", state["query"])
         target_engine = task.get("target_engine", "crossref")
         lane = task.get("lane", "primary")
@@ -88,13 +92,26 @@ async def researcher_node(state: AgentState) -> dict:
                 if not results and state.get("include_academic", True):
                     results = await crossref_search(query, max_results=per_task_limit)
         except Exception as e:
-            logger.warning("vector_search_failed", engine=target_engine, query=query, error=str(e))
+            logger.warning("vector_search_failed", engine=target_engine, error=type(e).__name__)
             # Fallback to crossref
             try:
                 results = await crossref_search(query, max_results=per_task_limit) if state.get("include_academic", True) else []
             except Exception:
                 results = []
 
+        return task, results
+
+    batches = await asyncio.gather(*(retrieve(task) for task in tasks_to_run[:12])) if len(existing_sources) < source_budget else []
+    # Round-robin across search vectors prevents the first engine/lane from
+    # consuming the entire source budget before counter-evidence is considered.
+    interleaved = []
+    for index in range(per_task_limit):
+        for task, results in batches:
+            if index < len(results):
+                interleaved.append((task, results[index]))
+    for task, result in interleaved:
+        lane = task.get("lane", "primary")
+        results = [result]
         # Deduplicate, format with immutable ID, and record exact passage
         for r in results:
             if len(existing_sources) + len(new_sources) >= source_budget:
@@ -130,6 +147,8 @@ async def researcher_node(state: AgentState) -> dict:
                 engine_stats["web"] += 1
 
     all_sources = existing_sources + new_sources
+    if not all_sources:
+        raise RuntimeError("No usable sources were retrieved. Revise the question or source settings.")
     logger.info(
         "researcher_completed",
         job_id=state.get("job_id"),

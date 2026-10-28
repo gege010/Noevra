@@ -23,6 +23,7 @@ class JobRepository:
         include_web: bool = True,
         output_format: str = "both",
         language: str = "en",
+        research_settings: dict | None = None,
     ) -> ResearchJob:
         job = ResearchJob(
             id=job_id,
@@ -31,6 +32,7 @@ class JobRepository:
             model=model,
             depth=depth,
             status="queued",
+            settings_json=research_settings,
         )
         self._db.add(job)
         await self._db.commit()
@@ -38,7 +40,7 @@ class JobRepository:
         return job
 
     async def get(self, job_id: str) -> ResearchJob | None:
-        result = await self._db.execute(select(ResearchJob).where(ResearchJob.id == job_id))
+        result = await self._db.execute(select(ResearchJob).where(ResearchJob.id == job_id).execution_options(populate_existing=True))
         return result.scalar_one_or_none()
 
     async def update_status(self, job_id: str, status: str) -> None:
@@ -68,7 +70,7 @@ class JobRepository:
             values["trace_url"] = trace_url
 
         await self._db.execute(
-            update(ResearchJob).where(ResearchJob.id == job_id).values(**values)
+            update(ResearchJob).where(ResearchJob.id == job_id, ResearchJob.status != "failed").values(**values)
         )
         await self._db.commit()
 
@@ -83,3 +85,8 @@ class JobRepository:
             select(ResearchJob).order_by(ResearchJob.created_at.desc()).limit(limit)
         )
         return result.scalars().all()
+
+    async def recover_interrupted(self):
+        await self._db.execute(update(ResearchJob).where(ResearchJob.status.not_in(["done", "failed"])).values(
+            status="failed", error="The server restarted before this research completed. Reconnect your provider and start a new investigation."))
+        await self._db.commit()

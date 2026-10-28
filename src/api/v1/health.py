@@ -11,6 +11,11 @@ from src.db.models import ResearchJob
 
 router = APIRouter(tags=["health"])
 
+
+@router.get("/live", summary="Process liveness without provider calls")
+async def live():
+    return {"status": "ok"}
+
 async def _check_groq() -> bool:
     settings = get_settings()
     if not settings.groq_api_key:
@@ -18,11 +23,11 @@ async def _check_groq() -> bool:
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(
-                "https://api.groq.com/v1/models",
+                "https://api.groq.com/openai/v1/models",
                 headers={"Authorization": f"Bearer {settings.groq_api_key}"},
                 timeout=5.0,
             )
-            return resp.status_code in (200, 401)
+            return resp.status_code == 200
     except Exception:
         return False
 
@@ -33,11 +38,11 @@ async def _check_tavily() -> bool:
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(
-                "https://api.tavily.com/search",
-                params={"api_key": settings.tavily_api_key, "query": "test"},
+                "https://api.tavily.com/usage",
+                headers={"Authorization": f"Bearer {settings.tavily_api_key}"},
                 timeout=5.0,
             )
-            return resp.status_code in (200, 401, 403)
+            return resp.status_code == 200
     except Exception:
         return False
 
@@ -55,9 +60,8 @@ async def _check_arxiv() -> bool:
 
 @router.get("/health", response_model=HealthResponse, summary="Health check")
 async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
-    groq_up = await _check_groq()
-    tavily_up = await _check_tavily()
-    arxiv_up = await _check_arxiv()
+    import asyncio
+    groq_up, tavily_up, arxiv_up = await asyncio.gather(_check_groq(), _check_tavily(), _check_arxiv())
     db_up = True
     try:
         result = await db.execute(
@@ -84,12 +88,6 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
         active_jobs=active_jobs,
     )
 
-@router.get("/models", summary="Available LLM models")
+@router.get("/models", summary="Model discovery instructions")
 async def list_models() -> dict:
-    return {
-        "models": [
-            {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B Versatile"},
-            {"id": "mixtral-8x7b-32768", "name": "Mixtral 8x7B"},
-        ],
-        "default": "llama-3.3-70b-versatile",
-    }
+    return {"models": [], "discovery_url": "/api/v1/providers/{provider}/models", "method": "POST", "note": "Use a provider connection to discover live model availability."}

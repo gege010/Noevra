@@ -7,8 +7,9 @@ from pydantic import BaseModel, Field, model_validator
 class ResearchRequest(BaseModel):
     query: str = Field(..., min_length=3, max_length=1500, description="Research topic, hypothesis, or inquiry")
     provider: str = Field(default="groq", description="LLM provider (groq, openai, anthropic, gemini, deepseek, openrouter, ollama, custom)")
-    model: str = Field(default="llama-3.3-70b-versatile", description="Model identifier")
-    api_key: str | None = Field(default=None, description="Optional client-provided API key override")
+    model: str = Field(default="llama-3.3-70b-versatile", min_length=1, max_length=256, description="Model identifier")
+    auth_type: Literal["api_key", "oauth"] = "api_key"
+    api_key: str | None = Field(default=None, repr=False, max_length=16384, description="Optional client-provided API key override")
     base_url: str | None = Field(default=None, description="Optional custom base URL for local LLMs or custom gateway")
     depth: Literal["quick", "standard", "deep"] = Field(default="standard", description="Research depth level")
     domain_focus: Literal["general", "cs_ai", "biomedical", "economics", "physics", "policy"] = Field(default="general", description="Disciplinary domain")
@@ -29,6 +30,11 @@ class ResearchRequest(BaseModel):
             raise ValueError("Enable at least one source collection")
         if self.provider not in {"groq", "openai", "anthropic", "gemini", "deepseek", "openrouter", "ollama", "custom"}:
             raise ValueError("Unsupported LLM provider")
+        if self.auth_type == "oauth" and self.provider not in {"openai", "gemini", "openrouter"}:
+            raise ValueError("This provider does not support OAuth model access in this application")
+        if self.base_url and self.provider in {"ollama", "custom"}:
+            from src.services.provider_service import validate_endpoint
+            validate_endpoint(self.base_url)
         return self
 
     model_config = {

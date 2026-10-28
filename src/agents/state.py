@@ -11,6 +11,7 @@ class AgentState(TypedDict):
     query: str
     provider: str
     model: str
+    auth_type: str
     api_key: str | None
     base_url: str | None
     depth: Literal["quick", "standard", "deep"]
@@ -66,6 +67,7 @@ def default_state(
     include_web: bool = True,
     max_iterations: int = 10,
     sources_limit: int = 20,
+    auth_type: str = "api_key",
 ) -> AgentState:
     """Factory for initial agent state."""
     return AgentState(
@@ -73,6 +75,7 @@ def default_state(
         provider=provider,
         model=model,
         api_key=api_key,
+        auth_type=auth_type,
         base_url=base_url,
         depth=depth,  # type: ignore[arg-type]
         domain_focus=domain_focus,  # type: ignore[arg-type]

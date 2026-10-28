@@ -30,6 +30,8 @@ async def init_db() -> None:
     """Create all tables and migrate columns if needed."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        from sqlalchemy import inspect
+        columns = await conn.run_sync(lambda sync: {col["name"] for col in inspect(sync).get_columns("research_jobs")})
         # Migrate columns if existing database has older schema
         for col, col_type in [
             ("provider", "VARCHAR(50) DEFAULT 'groq'"),
@@ -37,9 +39,8 @@ async def init_db() -> None:
             ("depth", "VARCHAR(20) DEFAULT 'standard'"),
             ("evidence_json", "JSON"),
             ("step_logs_json", "JSON"),
+            ("settings_json", "JSON"),
         ]:
-            try:
+            if col not in columns:
                 await conn.exec_driver_sql(f"ALTER TABLE research_jobs ADD COLUMN {col} {col_type};")
-            except Exception:
-                pass
 

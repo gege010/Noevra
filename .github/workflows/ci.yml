@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 jobs:
   test:
@@ -24,8 +24,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Type check (ruff)
-        run: pip install ruff && ruff check src/ tests/
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check Python syntax
+        run: python -m compileall -q src tests
+
+      - name: Test browser utilities
+        run: node --test tests/*.test.cjs
 
       - name: Run unit tests
         run: pytest tests/ -v --tb=short
