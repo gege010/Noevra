@@ -1,508 +1,796 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ScholarAgent // Autonomous Multi-Agent Research Assistant</title>
-  <meta name="description" content="Autonomous hierarchical multi-agent research assistant for publication-grade academic monographs, cross-verified with ArXiv, PubMed, CrossRef, and web sources.">
-  
-  <!-- Typography from Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&display=swap" rel="stylesheet">
-  
-  <!-- Modern SVG Icons (Phosphor-style standard) -->
-  <link rel="stylesheet" href="/static/app.css">
-</head>
-<body class="theme-dark">
-  <!-- Top Application Bar -->
-  <header class="app-header">
-    <div class="header-brand">
-      <div class="brand-symbol">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-        </svg>
-      </div>
-      <div class="brand-text">
-        <span class="brand-title">SCHOLAR<span class="brand-highlight">AGENT</span></span>
-        <span class="brand-badge">Autonomous Multi-Agent Research</span>
-      </div>
-    </div>
-
-    <div class="header-center">
-      <div class="pipeline-pill" id="pipelineStatusPill">
-        <span class="status-dot"></span>
-        <span class="status-label" id="statusPillText">System Ready // 5 Agent Nodes Active</span>
-      </div>
-    </div>
-
-    <div class="header-actions">
-      <button class="btn-ghost" id="historyToggleBtn" title="View Research Archive">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-          <circle cx="12" cy="12" r="10"></circle>
-          <polyline points="12 6 12 12 16 14"></polyline>
-        </svg>
-        <span>Research Library</span>
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f8f9f6" />
+    <meta
+      name="description"
+      content="A considered space for deep research. Explore questions, inspect evidence, and build source-grounded reports with your choice of AI model."
+    />
+    <title>ScholarAgent — A space for deeper research</title>
+    <link
+      rel="preload"
+      href="/static/fonts/Manrope.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/static/fonts/Newsreader.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/static/app.css" />
+    <link rel="stylesheet" href="/static/vendor/katex/katex.min.css" />
+    <script src="/static/vendor/markdown-it/markdown-it.min.js" defer></script>
+    <script src="/static/vendor/katex/katex.min.js" defer></script>
+    <script
+      src="/static/vendor/katex/contrib/auto-render.min.js"
+      defer
+    ></script>
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <svg
+      class="icon-definitions"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <defs>
+        <symbol id="i-plus" viewBox="0 0 24 24">
+          <path d="M12 5v14M5 12h14" />
+        </symbol>
+        <symbol id="i-search" viewBox="0 0 24 24">
+          <circle cx="10.5" cy="10.5" r="6.5" />
+          <path d="m16 16 4 4" />
+        </symbol>
+        <symbol id="i-book" viewBox="0 0 24 24">
+          <path
+            d="M12 5v15M12 5C9 3 5 3 3 4v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-2-1-6-1-9 1Z"
+          />
+        </symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24">
+          <path d="M5 12h14m-6-6 6 6-6 6" />
+        </symbol>
+        <symbol id="i-up" viewBox="0 0 24 24">
+          <path d="M12 19V5m-6 6 6-6 6 6" />
+        </symbol>
+        <symbol id="i-sliders" viewBox="0 0 24 24">
+          <path d="M4 7h6m4 0h6M4 17h10m4 0h2" />
+          <circle cx="12" cy="7" r="2" />
+          <circle cx="16" cy="17" r="2" />
+        </symbol>
+        <symbol id="i-chevron" viewBox="0 0 24 24">
+          <path d="m8 10 4 4 4-4" />
+        </symbol>
+        <symbol id="i-external" viewBox="0 0 24 24">
+          <path d="M14 4h6v6m0-6L10 14M10 4H4v16h16v-6" />
+        </symbol>
+        <symbol id="i-file" viewBox="0 0 24 24">
+          <path d="M14 3H5v18h14V8Zm0 0v5h5M8 12h8m-8 4h6" />
+        </symbol>
+        <symbol id="i-check" viewBox="0 0 24 24">
+          <path d="m5 12 4 4L19 6" />
+        </symbol>
+        <symbol id="i-close" viewBox="0 0 24 24">
+          <path d="m6 6 12 12M6 18 18 6" />
+        </symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24">
+          <path d="M20 14A8.5 8.5 0 0 1 10 4a8.5 8.5 0 1 0 10 10Z" />
+        </symbol>
+        <symbol id="i-sun" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="4" />
+          <path
+            d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"
+          />
+        </symbol>
+        <symbol id="i-menu" viewBox="0 0 24 24">
+          <path d="M4 7h16M4 12h16M4 17h16" />
+        </symbol>
+        <symbol id="i-info" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 11v6m0-10v1" />
+        </symbol>
+        <symbol id="i-download" viewBox="0 0 24 24">
+          <path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4" />
+        </symbol>
+        <symbol id="i-copy" viewBox="0 0 24 24">
+          <rect x="8" y="8" width="12" height="13" rx="2" />
+          <path d="M15 8V3H3v13h5" />
+        </symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l3 2" />
+        </symbol>
+        <symbol id="i-leaf" viewBox="0 0 24 24">
+          <path d="M20 4C10 2 3 7 5 14s13 5 15-10ZM5 20 16 9" />
+        </symbol>
+      </defs>
+    </svg>
+    <a href="#mainContent" class="skip-link">Skip to content</a>
+    <aside class="rail" aria-label="Workspace navigation">
+      <a class="wordmark" href="/" aria-label="ScholarAgent home"
+        ><span class="brand-mark" aria-hidden="true"
+          ><svg viewBox="0 0 32 32">
+            <path d="M5 7h8l3 5 3-5h8v18h-8l-3-5-3 5H5Z" />
+            <path d="M16 12v8M9 12h3m8 0h3M9 20h3m8 0h3" /></svg></span
+        >ScholarAgent<span class="wordmark-period">.</span></a
+      >
+      <button class="new-research" data-action="new">
+        <svg class="icon"><use href="#i-plus" /></svg><span>New research</span
+        ><kbd>Ctrl K</kbd>
       </button>
-      <div class="provider-badge" id="activeProviderBadge">
-        <span class="provider-badge-icon" id="badgeIcon">⚡</span>
-        <span class="provider-badge-text" id="badgeText">Groq · Llama 3.3 70B</span>
-      </div>
-    </div>
-  </header>
-
-  <!-- Main Workstation Layout -->
-  <main class="workstation-container">
-    <!-- Left Configuration Cockpit -->
-    <aside class="config-sidebar" id="configSidebar">
-      <div class="sidebar-header">
-        <h2 class="sidebar-title">Research Protocol</h2>
-        <span class="sidebar-subtitle">Configure model, scope & depth</span>
-      </div>
-
-      <form id="researchForm" class="research-form">
-        <!-- Topic / Inquiry Input -->
-        <div class="form-group">
-          <label for="queryInput" class="form-label">
-            <span>Research Question / Thesis</span>
-            <span class="label-hint">Be specific for deeper literature mapping</span>
-          </label>
-          <textarea 
-            id="queryInput" 
-            class="form-textarea" 
-            rows="3" 
-            placeholder="e.g. State-of-the-art transformer context extension techniques: RoPE scaling, YaRN, and LongLoRA empirical trade-offs..."
-            required
-          ></textarea>
+      <nav class="primary-nav">
+        <button class="nav-link active" data-view="home">
+          <svg class="icon"><use href="#i-search" /></svg>Research</button
+        ><button class="nav-link" data-view="library">
+          <svg class="icon"><use href="#i-book" /></svg>Library<span
+            class="nav-count"
+            id="libraryCount"
+          ></span>
+        </button>
+      </nav>
+      <div class="rail-recents">
+        <div class="rail-section-heading">
+          <span>Recent research</span
+          ><button
+            class="icon-button small"
+            data-action="refresh"
+            aria-label="Refresh research history"
+          >
+            <svg class="icon"><use href="#i-clock" /></svg>
+          </button>
         </div>
-
-        <!-- Provider Selection -->
-        <div class="form-group">
-          <label class="form-label">
-            <span>LLM Provider</span>
-            <span class="label-hint">Provider-agnostic execution</span>
-          </label>
-          <div class="provider-grid" id="providerGrid">
-            <!-- Dynamically populated by app.js -->
+        <div id="recentList" class="recent-list">
+          <p class="rail-empty">Loading your workspace…</p>
+        </div>
+      </div>
+      <div class="rail-bottom">
+        <div class="rail-note">
+          <svg class="icon"><use href="#i-book" /></svg>
+          <p>Every conclusion deserves<br />a source you can inspect.</p>
+        </div>
+        <button class="connection-button" data-action="settings">
+          <span class="connection-avatar">S</span
+          ><span
+            ><strong id="railProvider">Model settings</strong
+            ><small id="railModel">Choose your research model</small></span
+          ><svg class="icon"><use href="#i-sliders" /></svg>
+        </button>
+      </div>
+    </aside>
+    <div class="app-main">
+      <header class="topbar">
+        <div class="breadcrumbs">
+          <button
+            class="icon-button mobile-menu"
+            id="mobileMenuBtn"
+            aria-label="Open navigation"
+          >
+            <svg class="icon"><use href="#i-menu" /></svg></button
+          ><span>Workspace</span><span class="breadcrumb-divider">/</span
+          ><strong id="pageLabel">New research</strong>
+        </div>
+        <div class="topbar-actions">
+          <button
+            class="text-button help-button"
+            id="howItWorksBtn"
+            aria-label="How research works"
+          >
+            <svg class="icon"><use href="#i-info" /></svg
+            ><span>How it works</span></button
+          ><span class="utility-divider"></span
+          ><button
+            class="icon-button"
+            id="themeToggle"
+            aria-label="Switch to dark theme"
+          >
+            <svg class="icon"><use href="#i-moon" /></svg>
+          </button>
+        </div>
+      </header>
+      <main id="mainContent" tabindex="-1">
+        <section id="homeView" class="view home-view">
+          <div class="question-workspace">
+            <div class="home-intro">
+              <h1>A little curiosity.<br /><em>A deeper understanding.</em></h1>
+              <p>
+                A space to explore complex questions.<br class="mobile-break" />
+                Grounded in sources, open to discovery.
+              </p>
+            </div>
+            <form id="researchForm" novalidate>
+              <div class="composer" id="composer">
+                <label class="sr-only" for="queryInput"
+                  >Your research question</label
+                ><textarea
+                  id="queryInput"
+                  placeholder="What would you like to understand?"
+                  rows="3"
+                  maxlength="1500"
+                  aria-describedby="questionHint formError"
+                ></textarea>
+                <div class="composer-bottom">
+                  <div class="composer-options">
+                    <label class="depth-control"
+                      ><svg class="icon"><use href="#i-search" /></svg
+                      ><select id="depthSelect" aria-label="Research depth">
+                        <option value="quick">Quick brief</option>
+                        <option value="standard" selected>
+                          In-depth research
+                        </option>
+                        <option value="deep">Deep investigation</option></select
+                      ><svg class="icon chevron">
+                        <use href="#i-chevron" /></svg></label
+                    ><button
+                      type="button"
+                      class="model-control"
+                      data-action="settings"
+                    >
+                      <span class="model-dot"></span
+                      ><span id="composerModel">Choose model</span
+                      ><svg class="icon chevron"><use href="#i-chevron" /></svg>
+                    </button>
+                  </div>
+                  <button
+                    type="submit"
+                    class="send-button"
+                    id="startResearchBtn"
+                    aria-label="Start research"
+                  >
+                    <svg class="icon"><use href="#i-up" /></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="composer-caption">
+                <span id="questionHint"
+                  >Follow the evidence. Keep the uncertainty.</span
+                ><span class="keyboard-hint"
+                  ><kbd>Ctrl</kbd> + <kbd>Enter</kbd> to research</span
+                >
+              </div>
+              <p class="form-error" id="formError" role="alert" hidden></p>
+            </form>
+            <section class="starting-points" aria-labelledby="startingTitle">
+              <div class="section-heading">
+                <h2 id="startingTitle">A few places to begin</h2>
+                <span>Make a question your own</span>
+              </div>
+              <div class="suggestion-list">
+                <button
+                  class="suggestion"
+                  data-query="How do retrieval-augmented generation and fine-tuning compare for domain-specific language models?"
+                  data-domain="cs_ai"
+                >
+                  <span class="suggestion-category">Technology</span
+                  ><span>When should you use RAG over fine-tuning?</span
+                  ><svg class="icon"><use href="#i-arrow" /></svg>
+                </button>
+                <button
+                  class="suggestion"
+                  data-query="What does the evidence say about the impact of urban green spaces on mental health?"
+                  data-domain="biomedical"
+                >
+                  <span class="suggestion-category">Health & society</span
+                  ><span>Can greener cities change how we feel?</span
+                  ><svg class="icon"><use href="#i-arrow" /></svg>
+                </button>
+                <button
+                  class="suggestion"
+                  data-query="How do carbon pricing policies affect industrial competitiveness, and where do empirical studies disagree?"
+                  data-domain="economics"
+                >
+                  <span class="suggestion-category">Economics</span
+                  ><span>The real trade-offs behind carbon pricing</span
+                  ><svg class="icon"><use href="#i-arrow" /></svg>
+                </button>
+              </div>
+            </section>
+            <div class="research-principle">
+              <div class="principle-symbol">
+                <svg class="icon"><use href="#i-leaf" /></svg>
+              </div>
+              <p>
+                <strong>Depth, with a paper trail.</strong> Explore academic
+                literature and the open web. Trace claims back to their sources,
+                including what the evidence leaves unanswered.
+              </p>
+              <button
+                class="icon-button"
+                data-action="how"
+                aria-label="Learn about evidence and research"
+              >
+                <svg class="icon"><use href="#i-arrow" /></svg>
+              </button>
+            </div>
           </div>
+          <footer class="workspace-footer">
+            <span>Independent thinking. Informed by evidence.</span
+            ><button class="text-button" data-action="settings">
+              Your model. Your choice.<svg class="icon">
+                <use href="#i-sliders" />
+              </svg>
+            </button>
+          </footer>
+        </section>
+        <section id="runningView" class="view running-view" hidden>
+          <div class="running-header">
+            <span class="live-label"><span></span>Research in progress</span>
+            <h1 id="activeQueryTitle"></h1>
+            <p id="runningMeta"></p>
+          </div>
+          <div class="progress-section">
+            <div class="progress-caption">
+              <span id="progressLabel">Preparing your research</span
+              ><span id="progressValue">0%</span>
+            </div>
+            <div
+              class="progress-track"
+              role="progressbar"
+              aria-label="Research progress"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+              id="progressTrack"
+            >
+              <div id="progressFill"></div>
+            </div>
+          </div>
+          <ol class="research-stages" id="researchStages">
+            <li data-node="planner">
+              <span class="stage-symbol">1</span>
+              <div>
+                <strong>Shape the question</strong>
+                <p>Define the scope and a focused search plan.</p>
+              </div>
+              <span class="stage-state">Waiting</span>
+            </li>
+            <li data-node="researcher">
+              <span class="stage-symbol">2</span>
+              <div>
+                <strong>Follow the sources</strong>
+                <p>Gather relevant literature and independent perspectives.</p>
+              </div>
+              <span class="stage-state">Waiting</span>
+            </li>
+            <li data-node="verifier">
+              <span class="stage-symbol">3</span>
+              <div>
+                <strong>Examine the evidence</strong>
+                <p>Check passages, competing claims and open questions.</p>
+              </div>
+              <span class="stage-state">Waiting</span>
+            </li>
+            <li data-node="writer">
+              <span class="stage-symbol">4</span>
+              <div>
+                <strong>Connect the findings</strong>
+                <p>Build a report from the evidence collected.</p>
+              </div>
+              <span class="stage-state">Waiting</span>
+            </li>
+            <li data-node="reviewer">
+              <span class="stage-symbol">5</span>
+              <div>
+                <strong>Take a critical look</strong>
+                <p>Review coverage, limitations and citation support.</p>
+              </div>
+              <span class="stage-state">Waiting</span>
+            </li>
+          </ol>
+          <details class="execution-details">
+            <summary>
+              Research activity<span id="activityCount">0 events</span>
+            </summary>
+            <div
+              id="activityLog"
+              class="activity-log"
+              role="log"
+              aria-live="polite"
+            ></div>
+          </details>
+          <div class="running-notice" id="runningNotice">
+            <svg class="icon"><use href="#i-info" /></svg
+            ><span
+              >You can browse your library while this research continues.</span
+            >
+          </div>
+          <button class="secondary-button" id="returnToQuestionBtn" hidden>
+            Return to your question
+          </button>
+        </section>
+        <section id="reportView" class="view report-view" hidden>
+          <div class="report-toolbar">
+            <button class="text-button" data-action="new">
+              <svg class="icon"><use href="#i-plus" /></svg>New research
+            </button>
+            <div class="report-exports">
+              <button class="text-button" id="copyReportBtn">
+                <svg class="icon"><use href="#i-copy" /></svg><span>Copy</span>
+              </button>
+              <details class="export-menu">
+                <summary class="secondary-button">
+                  <svg class="icon"><use href="#i-download" /></svg>Export<svg
+                    class="icon chevron"
+                  >
+                    <use href="#i-chevron" />
+                  </svg>
+                </summary>
+                <div class="export-options">
+                  <button data-export="pdf">PDF document</button
+                  ><button data-export="download">Markdown</button
+                  ><button data-export="bibtex">BibTeX references</button>
+                </div>
+              </details>
+            </div>
+          </div>
+          <div class="report-heading">
+            <div class="report-meta" id="reportMeta"></div>
+            <h1 id="reportTitle"></h1>
+            <div class="report-stats" id="reportStats"></div>
+          </div>
+          <div class="report-tabs" role="tablist" aria-label="Research views">
+            <button
+              role="tab"
+              aria-selected="true"
+              aria-controls="panelDocument"
+              id="tabDocument"
+              data-tab="Document"
+            >
+              Report</button
+            ><button
+              role="tab"
+              aria-selected="false"
+              aria-controls="panelEvidence"
+              id="tabEvidence"
+              data-tab="Evidence"
+              tabindex="-1"
+            >
+              Evidence<span id="evidenceCount"></span></button
+            ><button
+              role="tab"
+              aria-selected="false"
+              aria-controls="panelSources"
+              id="tabSources"
+              data-tab="Sources"
+              tabindex="-1"
+            >
+              Sources<span id="sourceCount"></span></button
+            ><button
+              role="tab"
+              aria-selected="false"
+              aria-controls="panelProcess"
+              id="tabProcess"
+              data-tab="Process"
+              tabindex="-1"
+            >
+              Research process
+            </button>
+          </div>
+          <section
+            id="panelDocument"
+            role="tabpanel"
+            aria-labelledby="tabDocument"
+          >
+            <div class="document-layout">
+              <article id="reportArticle" class="report-article"></article>
+              <aside class="document-margin">
+                <div class="margin-sticky">
+                  <h2>In this report</h2>
+                  <nav id="reportToc" aria-label="Report contents"></nav>
+                  <div class="margin-evidence" id="marginEvidence"></div>
+                  <p class="margin-note">
+                    A research draft, not a final authority. Inspect the sources
+                    behind the conclusions.
+                  </p>
+                </div>
+              </aside>
+            </div>
+          </section>
+          <section
+            id="panelEvidence"
+            role="tabpanel"
+            aria-labelledby="tabEvidence"
+            hidden
+          >
+            <div class="panel-heading">
+              <div>
+                <h2>Show your workings.</h2>
+                <p>Claims, exact passages, and what remains unsettled.</p>
+              </div>
+              <select id="evidenceFilter" aria-label="Filter evidence status">
+                <option value="all">All claims</option>
+                <option value="supported">Supported</option>
+                <option value="contested">Contested</option>
+                <option value="unverified">Unverified</option>
+                <option value="stale">Stale</option>
+              </select>
+            </div>
+            <div id="evidenceList" class="evidence-list"></div>
+          </section>
+          <section
+            id="panelSources"
+            role="tabpanel"
+            aria-labelledby="tabSources"
+            hidden
+          >
+            <div class="panel-heading">
+              <div>
+                <h2>The reading behind the research.</h2>
+                <p>Original sources, kept close to the findings.</p>
+              </div>
+            </div>
+            <label class="search-field"
+              ><svg class="icon"><use href="#i-search" /></svg
+              ><input
+                type="search"
+                id="sourceSearch"
+                placeholder="Search title, author, journal or DOI"
+                aria-label="Search sources"
+            /></label>
+            <div id="sourcesList" class="sources-list"></div>
+          </section>
+          <section
+            id="panelProcess"
+            role="tabpanel"
+            aria-labelledby="tabProcess"
+            hidden
+          >
+            <div class="panel-heading">
+              <div>
+                <h2>A transparent process.</h2>
+                <p>The research brief, review outcome and execution history.</p>
+              </div>
+            </div>
+            <div id="processContent"></div>
+          </section>
+        </section>
+        <section id="libraryView" class="view library-view" hidden>
+          <div class="library-heading">
+            <div>
+              <h1>Your library.</h1>
+              <p>Questions explored. Findings worth returning to.</p>
+            </div>
+            <button class="primary-button" data-action="new">
+              <svg class="icon"><use href="#i-plus" /></svg>New research
+            </button>
+          </div>
+          <label class="search-field"
+            ><svg class="icon"><use href="#i-search" /></svg
+            ><input
+              id="librarySearch"
+              type="search"
+              placeholder="Find a research question…"
+              aria-label="Search research library"
+          /></label>
+          <div class="library-list-heading">
+            <span>Research question</span><span>Details</span>
+          </div>
+          <div id="libraryList" class="library-list"></div>
+        </section>
+      </main>
+    </div>
+    <dialog
+      id="settingsDialog"
+      class="settings-dialog"
+      aria-labelledby="settingsTitle"
+    >
+      <div class="dialog-header">
+        <div>
+          <h2 id="settingsTitle">Make it your workspace.</h2>
+          <p>Your model, your research preferences.</p>
         </div>
-
-        <!-- Model Selection & Key Override -->
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label for="modelSelect" class="form-label">Model Architecture</label>
-            <select id="modelSelect" class="form-select">
-              <!-- Dynamically populated based on provider -->
+        <button
+          class="icon-button"
+          data-close="settingsDialog"
+          aria-label="Close settings"
+        >
+          <svg class="icon"><use href="#i-close" /></svg>
+        </button>
+      </div>
+      <div class="settings-body">
+        <section class="settings-section">
+          <h3>Model connection</h3>
+          <div class="field">
+            <label for="providerSelect">Provider</label
+            ><select id="providerSelect">
+              <option>Loading providers…</option>
             </select>
           </div>
-        </div>
-
-        <!-- API Key Accordion / Override -->
-        <div class="api-key-container">
-          <div class="api-key-header" id="apiKeyToggle">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-            <span id="apiKeyStatusLabel">Custom API Key (Optional Override)</span>
-            <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
+          <div class="field">
+            <label for="modelSelect">Model</label
+            ><select id="modelSelect"></select>
           </div>
-          <div class="api-key-body" id="apiKeyBody">
-            <input 
-              type="password" 
-              id="apiKeyInput" 
-              class="form-input" 
-              placeholder="Paste API key here (persists in your browser only)..." 
+          <div class="field">
+            <label for="customModel"
+              >Use a different model <span>Optional</span></label
+            ><input
+              id="customModel"
+              placeholder="Enter the exact model identifier"
               autocomplete="off"
             />
-            <div class="custom-url-field" id="customUrlField" style="display: none; margin-top: 8px;">
-              <input 
-                type="text" 
-                id="baseUrlInput" 
-                class="form-input" 
-                placeholder="Base URL: http://localhost:11434/v1" 
-              />
+            <p>
+              Overrides the selection above. Availability depends on your
+              provider.
+            </p>
+          </div>
+          <div class="connection-status" id="connectionStatus"></div>
+          <div class="field">
+            <label for="apiKeyInput"
+              >API key <span>Optional override</span></label
+            >
+            <div class="password-field">
+              <input
+                id="apiKeyInput"
+                type="password"
+                autocomplete="off"
+                placeholder="Paste your provider API key"
+              /><button
+                class="text-button"
+                id="revealKeyBtn"
+                aria-label="Show API key"
+                aria-pressed="false"
+              >
+                Show
+              </button>
+            </div>
+            <p>
+              Kept only in this tab's memory. Sent to your research server when
+              you start a job.
+            </p>
+          </div>
+          <div class="field" id="endpointField" hidden>
+            <label for="baseUrlInput">API endpoint</label
+            ><input
+              id="baseUrlInput"
+              type="url"
+              placeholder="http://localhost:11434/v1"
+            />
+          </div>
+        </section>
+        <section class="settings-section">
+          <h3>Research preferences</h3>
+          <div class="field">
+            <label for="domainSelect">Area of interest</label
+            ><select id="domainSelect">
+              <option value="general">Across disciplines</option>
+              <option value="cs_ai">Computer science & AI</option>
+              <option value="biomedical">Health & biomedical science</option>
+              <option value="economics">Economics & finance</option>
+              <option value="physics">Physics & mathematics</option>
+              <option value="policy">Public policy</option>
+            </select>
+          </div>
+          <div class="field-pair">
+            <div class="field">
+              <label for="languageSelect">Report language</label
+              ><select id="languageSelect">
+                <option value="en">English</option>
+                <option value="id">Bahasa Indonesia</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="citationSelect">Citation style</label
+              ><select id="citationSelect">
+                <option value="ieee">IEEE</option>
+                <option value="apa">APA</option>
+                <option value="nature">Nature</option>
+                <option value="harvard">Harvard</option>
+              </select>
             </div>
           </div>
-        </div>
-
-        <!-- Depth Levels -->
-        <div class="form-group">
-          <label class="form-label">
-            <span>Investigation Depth</span>
-            <span class="label-hint">Sets vector count & synthesis density</span>
-          </label>
-          <div class="depth-selector">
-            <label class="depth-card">
-              <input type="radio" name="depth" value="quick">
-              <div class="depth-content">
-                <div class="depth-title">⚡ Quick Brief</div>
-                <div class="depth-desc">3 vectors · 1,500w · Fast executive summary</div>
-              </div>
-            </label>
-            <label class="depth-card active">
-              <input type="radio" name="depth" value="standard" checked>
-              <div class="depth-content">
-                <div class="depth-title">🔬 Comprehensive</div>
-                <div class="depth-desc">5 vectors · 3,500w · Full monograph & tables</div>
-              </div>
-            </label>
-            <label class="depth-card">
-              <input type="radio" name="depth" value="deep">
-              <div class="depth-content">
-                <div class="depth-title">🎓 Deep Academic</div>
-                <div class="depth-desc">8 vectors · 5,000w+ · Meta-review & proof</div>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <!-- Academic Preferences (Domain, Style, Language) -->
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label for="domainSelect" class="form-label">Academic Domain</label>
-            <select id="domainSelect" class="form-select">
-              <option value="cs_ai">Computer Science & AI</option>
-              <option value="biomedical">Biomedical & Clinical (PubMed)</option>
-              <option value="economics">Economics & Finance</option>
-              <option value="physics">Physics & Mathematics</option>
-              <option value="policy">Public Policy & Law</option>
-              <option value="general" selected>General Scientific Cross-Disciplinary</option>
+          <fieldset class="collection-fields">
+            <legend>Look for evidence in</legend>
+            <label
+              ><input type="checkbox" id="includeAcademic" checked /><span
+                >Academic literature<small
+                  >CrossRef, PubMed and arXiv</small
+                ></span
+              ></label
+            ><label
+              ><input type="checkbox" id="includeWeb" checked /><span
+                >The open web<small
+                  >Reports, documentation and other sources</small
+                ></span
+              ></label
+            >
+          </fieldset>
+          <div class="field">
+            <label for="sourceLimit">Source budget</label
+            ><select id="sourceLimit">
+              <option value="10">Up to 10 sources</option>
+              <option value="20" selected>Up to 20 sources</option>
+              <option value="30">Up to 30 sources</option>
+              <option value="50">Up to 50 sources</option>
             </select>
           </div>
-          <div class="form-group flex-1">
-            <label for="citationStyleSelect" class="form-label">Citation Standard</label>
-            <select id="citationStyleSelect" class="form-select">
-              <option value="ieee" selected>IEEE [1] (Numbered)</option>
-              <option value="apa">APA 7th (Author, Year)</option>
-              <option value="nature">Nature Journal Standard</option>
-              <option value="harvard">Harvard Style</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label for="languageSelect" class="form-label">Monograph Language</label>
-            <select id="languageSelect" class="form-select">
-              <option value="en" selected>English (Formal Academic)</option>
-              <option value="id">Bahasa Indonesia (Akademik Formal)</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Submit Button -->
-        <button type="submit" id="startResearchBtn" class="btn-primary">
-          <span class="btn-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-          </span>
-          <span class="btn-text">Initiate Autonomous Research</span>
+        </section>
+      </div>
+      <div class="dialog-footer">
+        <span>Changes apply to your next research.</span
+        ><button class="primary-button" data-close="settingsDialog">
+          Done<svg class="icon"><use href="#i-check" /></svg>
         </button>
-      </form>
-    </aside>
-
-    <!-- Center/Right Canvas Stage -->
-    <section class="stage-container" id="stageContainer">
-      <!-- 1. Idle / Welcome State -->
-      <div class="state-idle" id="idleState">
-        <div class="welcome-card">
-          <div class="welcome-badge">RESEARCH WORKBENCH v2.0</div>
-          <h1 class="welcome-title">Zero-Hallucination Academic Intelligence</h1>
-          <p class="welcome-desc">
-            An autonomous multi-agent pipeline orchestrating <strong>Planner</strong>, <strong>Researcher</strong>, <strong>Verifier</strong>, <strong>Writer</strong>, and <strong>Peer Reviewer</strong> across ArXiv, PubMed, CrossRef, and scientific web repositories.
-          </p>
-
-          <div class="sample-queries-section">
-            <div class="sample-header">Select an exemplary investigation or enter your custom inquiry:</div>
-            <div class="sample-chips" id="sampleChips">
-              <button class="sample-chip" data-query="Comparative efficacy of mRNA vs viral vector vaccines for emerging respiratory pathogens" data-domain="biomedical">
-                <span class="chip-domain">Biomedical</span>
-                <span class="chip-text">Comparative efficacy of mRNA vs viral vector vaccines</span>
-              </button>
-              <button class="sample-chip" data-query="State of reinforcement learning from human feedback (RLHF) vs Direct Preference Optimization (DPO)" data-domain="cs_ai">
-                <span class="chip-domain">AI / CS</span>
-                <span class="chip-text">RLHF vs Direct Preference Optimization (DPO) Trade-offs</span>
-              </button>
-              <button class="sample-chip" data-query="Impact of carbon tax policies on manufacturing competitiveness: An empirical meta-analysis" data-domain="economics">
-                <span class="chip-domain">Economics</span>
-                <span class="chip-text">Carbon tax policies & industrial competitiveness</span>
-              </button>
-              <button class="sample-chip" data-query="Quantum error correction thresholds in surface codes vs color codes" data-domain="physics">
-                <span class="chip-domain">Physics</span>
-                <span class="chip-text">Quantum error correction thresholds in surface codes</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="features-ribbon">
-            <div class="feature-item">
-              <span class="feature-icon">🛡️</span>
-              <div>
-                <strong>Audited Truth</strong>
-                <p>Peer-reviewed journal cross-verification via CrossRef & PubMed.</p>
-              </div>
-            </div>
-            <div class="feature-item">
-              <span class="feature-icon">⚙️</span>
-              <div>
-                <strong>Provider Freedom</strong>
-                <p>Use Groq, Claude 3.7, GPT-4o, Gemini 2.0, or local Ollama.</p>
-              </div>
-            </div>
-            <div class="feature-item">
-              <span class="feature-icon">📑</span>
-              <div>
-                <strong>Scholarly Standards</strong>
-                <p>Structured abstract, comparative tables, and BibTeX export.</p>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
-
-      <!-- 2. Active Execution Radar State -->
-      <div class="state-running" id="runningState" style="display: none;">
-        <div class="radar-card">
-          <div class="radar-header">
-            <div class="radar-topic-wrap">
-              <h2 class="radar-query-title" id="activeQueryTitle">Investigating research question...</h2>
-            </div>
-            <div class="radar-meta">
-              <span class="meta-pill" id="activeModelPill">Groq · Llama 3.3 70B</span>
-              <span class="meta-pill" id="activeDepthPill">Comprehensive (5 Vectors)</span>
-            </div>
-          </div>
-
-          <!-- 5-Node Agent Pipeline Visualizer -->
-          <div class="agent-pipeline-track">
-            <div class="agent-node" id="nodePlanner">
-              <div class="node-indicator">
-                <span class="node-index">01</span>
-                <span class="node-dot"></span>
-              </div>
-              <div class="node-info">
-                <div class="node-name">Planner</div>
-                <div class="node-status-text">Vector formulation</div>
-              </div>
-            </div>
-            <div class="pipeline-connector"></div>
-
-            <div class="agent-node" id="nodeResearcher">
-              <div class="node-indicator">
-                <span class="node-index">02</span>
-                <span class="node-dot"></span>
-              </div>
-              <div class="node-info">
-                <div class="node-name">Researcher</div>
-                <div class="node-status-text">Multi-source retrieval</div>
-              </div>
-            </div>
-            <div class="pipeline-connector"></div>
-
-            <div class="agent-node" id="nodeVerifier">
-              <div class="node-indicator">
-                <span class="node-index">03</span>
-                <span class="node-dot"></span>
-              </div>
-              <div class="node-info">
-                <div class="node-name">Verifier</div>
-                <div class="node-status-text">Fact-check & evidence matrix</div>
-              </div>
-            </div>
-            <div class="pipeline-connector"></div>
-
-            <div class="agent-node" id="nodeWriter">
-              <div class="node-indicator">
-                <span class="node-index">04</span>
-                <span class="node-dot"></span>
-              </div>
-              <div class="node-info">
-                <div class="node-name">Writer</div>
-                <div class="node-status-text">Scholarly monograph</div>
-              </div>
-            </div>
-            <div class="pipeline-connector"></div>
-
-            <div class="agent-node" id="nodeReviewer">
-              <div class="node-indicator">
-                <span class="node-index">05</span>
-                <span class="node-dot"></span>
-              </div>
-              <div class="node-info">
-                <div class="node-name">Referee</div>
-                <div class="node-status-text">Journal peer review</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Progress bar -->
-          <div class="pipeline-progress-bar">
-            <div class="progress-fill" id="pipelineProgressFill" style="width: 15%;"></div>
-          </div>
-
-          <!-- Real-Time Telemetry & Event Stream Terminal -->
-          <div class="telemetry-box">
-            <div class="telemetry-header">
-              <span>Agentic Reasoning & Search Stream</span>
-              <span class="pulse-indicator">● LIVE SSE STREAM</span>
-            </div>
-            <div class="telemetry-log" id="telemetryLog">
-              <div class="log-entry">Connecting to autonomous LangGraph supervisor...</div>
-            </div>
-          </div>
-        </div>
+    </dialog>
+    <dialog id="helpDialog" class="help-dialog" aria-labelledby="helpTitle">
+      <div class="dialog-header">
+        <h2 id="helpTitle">From a question<br />to a clearer picture.</h2>
+        <button
+          class="icon-button"
+          data-close="helpDialog"
+          aria-label="Close research explanation"
+        >
+          <svg class="icon"><use href="#i-close" /></svg>
+        </button>
       </div>
-
-      <!-- 3. Completed State: Academic Paper Canvas & Evidence Matrix -->
-      <div class="state-completed" id="completedState" style="display: none;">
-        <!-- Top Action & Export Ribbon -->
-        <div class="paper-action-ribbon">
-          <div class="ribbon-metrics">
-            <div class="metric-badge">
-              <span class="metric-num" id="paperWordCount">0</span>
-              <span class="metric-lbl">Words</span>
-            </div>
-            <div class="metric-badge">
-              <span class="metric-num" id="paperSourceCount">0</span>
-              <span class="metric-lbl">Citations</span>
-            </div>
-            <div class="metric-badge">
-              <span class="metric-num" id="paperTier1Count">0</span>
-              <span class="metric-lbl">Peer-Reviewed</span>
-            </div>
-            <div class="metric-badge highlight">
-              <span class="metric-num" id="paperScore">9.0</span>
-              <span class="metric-lbl">Referee Score</span>
-            </div>
-          </div>
-
-          <div class="ribbon-controls">
-            <button class="btn-action" id="downloadPdfBtn" title="Download Formatted PDF">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="12" y1="18" x2="12" y2="12"></line>
-                <line x1="9" y1="15" x2="15" y2="15"></line>
-              </svg>
-              <span>Download PDF</span>
-            </button>
-            <button class="btn-action" id="downloadMdBtn" title="Download Raw Markdown">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              <span>Markdown</span>
-            </button>
-            <button class="btn-action" id="exportBibtexBtn" title="Export BibTeX for LaTeX">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-              </svg>
-              <span>BibTeX</span>
-            </button>
-            <button class="btn-action" id="copyPaperBtn" title="Copy Paper to Clipboard">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              <span>Copy</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Navigation Tabs: Paper | Evidence Ledger | Bibliographic Index | Telemetry -->
-        <div class="paper-tabs">
-          <button class="tab-btn active" data-target="tabPaper">Scholarly Monograph</button>
-          <button class="tab-btn" data-target="tabEvidence">Evidence Ledger & Fact-Checks</button>
-          <button class="tab-btn" data-target="tabSources">Bibliographic Index (<span id="sourceTabCount">0</span>)</button>
-          <button class="tab-btn" data-target="tabTelemetry">Peer Review & Execution Log</button>
-        </div>
-
-        <!-- Tab 1: Academic Monograph Reader -->
-        <div class="tab-content active" id="tabPaper">
-          <!-- Research Contract Card Banner -->
-          <div class="research-contract-card" id="researchContractCard" style="display: none;"></div>
-
-          <div class="paper-layout">
-            <!-- Floating Table of Contents -->
-            <aside class="paper-toc" id="paperToc">
-              <div class="toc-title">Table of Contents</div>
-              <ul class="toc-list" id="tocList"></ul>
-            </aside>
-
-            <!-- Rendered Monograph Article -->
-            <article class="paper-article" id="paperArticle">
-              <!-- Dynamically rendered markdown -->
-            </article>
-          </div>
-        </div>
-
-        <!-- Tab 2: Evidence Ledger & Fact-Checks -->
-        <div class="tab-content" id="tabEvidence">
-          <div class="evidence-matrix-container">
-            <div class="evidence-header-card">
-              <div class="evidence-title-row">
-                <div>
-                  <h3>Empirical Evidence Ledger</h3>
-                  <p>Audited by the scientific verifier against exact primary source passages. Ground truth before synthesis.</p>
-                </div>
-                <div class="ledger-filter-buttons" id="ledgerFilterButtons">
-                  <button class="ledger-filter-btn active" data-status="all">All Claims</button>
-                  <button class="ledger-filter-btn" data-status="supported">Supported</button>
-                  <button class="ledger-filter-btn" data-status="contested">Contested</button>
-                  <button class="ledger-filter-btn" data-status="unverified">Unverified</button>
-                </div>
-              </div>
-              <div class="credibility-summary-row" id="credibilitySummaryRow"></div>
-            </div>
-            <div class="evidence-cards-grid" id="evidenceCardsGrid"></div>
-          </div>
-        </div>
-
-        <!-- Tab 3: Bibliographic Index -->
-        <div class="tab-content" id="tabSources">
-          <div class="sources-index-container">
-            <div class="sources-search-bar">
-              <input type="text" id="sourceSearchInput" placeholder="Filter sources by author, title, journal or DOI..." class="form-input">
-            </div>
-            <div class="sources-list" id="sourcesList"></div>
-          </div>
-        </div>
-
-        <!-- Tab 4: Peer Review & Telemetry -->
-        <div class="tab-content" id="tabTelemetry">
-          <div class="referee-report-container">
-            <div class="referee-card" id="refereeCard"></div>
-            <div class="step-logs-timeline" id="stepLogsTimeline"></div>
-          </div>
-        </div>
+      <div class="help-content">
+        <p>
+          ScholarAgent plans a search, gathers sources, checks evidence, writes
+          a report and reviews its coverage.
+        </p>
+        <ol>
+          <li>
+            <strong>Ask a question worth exploring.</strong
+            ><span
+              >Add context, a time period or the trade-offs you want to
+              understand.</span
+            >
+          </li>
+          <li>
+            <strong>Choose the depth you need.</strong
+            ><span
+              >A quick brief for orientation. In-depth research for broader
+              evidence. A deep investigation for gaps and disagreements.</span
+            >
+          </li>
+          <li>
+            <strong>Read beyond the answer.</strong
+            ><span
+              >Inspect the evidence ledger and original sources. Supported means
+              the collected passage backs a claim; it is not a guarantee that a
+              study or conclusion is correct.</span
+            >
+          </li>
+        </ol>
+        <p class="help-note">
+          Research can leave questions unresolved. That uncertainty belongs in
+          the report.
+        </p>
       </div>
-    </section>
-  </main>
-
-  <!-- Research Library Slide-Over Drawer -->
-  <div class="drawer-overlay" id="historyDrawerOverlay"></div>
-  <aside class="history-drawer" id="historyDrawer">
-    <div class="drawer-header">
-      <h3>Research Library</h3>
-      <button class="btn-close" id="closeHistoryBtn">&times;</button>
-    </div>
-    <div class="drawer-body">
-      <div class="history-list" id="historyList">
-        <div class="empty-history">Loading previous research papers...</div>
+    </dialog>
+    <dialog
+      id="navigationDialog"
+      class="navigation-dialog"
+      aria-label="Navigation"
+    >
+      <div class="dialog-header">
+        <h2>ScholarAgent.</h2>
+        <button
+          class="icon-button"
+          data-close="navigationDialog"
+          aria-label="Close navigation"
+        >
+          <svg class="icon"><use href="#i-close" /></svg>
+        </button>
       </div>
-    </div>
-  </aside>
-
-  <!-- Interactive Citation Tooltip Container -->
-  <div class="citation-tooltip" id="citationTooltip"></div>
-
-  <!-- Client Application Logic -->
-  <script src="/static/app.js"></script>
-</body>
+      <button class="nav-link" data-action="new">
+        <svg class="icon"><use href="#i-plus" /></svg>New research</button
+      ><button class="nav-link" data-view="library">
+        <svg class="icon"><use href="#i-book" /></svg>Research library</button
+      ><button class="nav-link" data-action="settings">
+        <svg class="icon"><use href="#i-sliders" /></svg>Model & preferences
+      </button>
+    </dialog>
+    <div
+      id="notification"
+      class="notification"
+      role="status"
+      aria-live="polite"
+      hidden
+    ></div>
+  </body>
 </html>
