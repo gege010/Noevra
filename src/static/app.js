@@ -154,52 +154,10 @@ function openDialog(id) {
   if (!$(id).open) $(id).showModal();
 }
 function saveConnection() {
-  if (!state.settingsProvider) return;
-  const previous = state.connections[state.settingsProvider];
-  state.connections[state.settingsProvider] = {
-    auth:
-      previous?.key === $("apiKeyInput").value.trim() ? previous?.auth : "key",
-    key: $("apiKeyInput").value.trim(),
-    endpoint: $("baseUrlInput").value.trim(),
-    custom: $("customModel").value.trim(),
-    model: $("modelSelect").value,
-  };
-  state.provider = state.settingsProvider;
-  state.model = $("customModel").value.trim() || $("modelSelect").value;
-  updateModelLabels();
+  window.NoevraProviders?.selectModel();
 }
 function populateConnection(provider) {
-  state.settingsProvider = provider;
-  const info = state.providers[provider];
-  if (!info) return;
-  const saved = state.connections[provider] || {};
-  $("modelSelect").innerHTML = (info.models || [])
-    .map((m) => `<option value="${esc(m.id)}">${esc(m.name || m.id)}</option>`)
-    .join("");
-  $("modelSelect").value = saved.model || info.default_model;
-  if (!$("modelSelect").value && $("modelSelect").options.length)
-    $("modelSelect").selectedIndex = 0;
-  $("customModel").value = saved.custom || "";
-  $("apiKeyInput").value = saved.key || "";
-  $("apiKeyInput").type = "password";
-  $("revealKeyBtn").textContent = "Show";
-  $("revealKeyBtn").setAttribute("aria-pressed", "false");
-  $("revealKeyBtn").setAttribute("aria-label", "Show API key");
-  $("endpointField").hidden = !["ollama", "custom"].includes(provider);
-  $("baseUrlInput").value =
-    saved.endpoint ||
-    (provider === "ollama"
-      ? "http://localhost:11434/v1"
-      : provider === "custom"
-        ? "http://localhost:1234/v1"
-        : "");
-  $("oauthConnection").hidden = provider !== "openrouter";
-  $("connectionStatus").textContent = ["ollama", "custom"].includes(provider)
-    ? "Uses your endpoint. Connection and model availability are checked when research starts."
-    : info.configured_in_backend
-      ? "A server API key is configured. You can supply an override below."
-      : "Add an API key below, or configure this provider on your research server.";
-  saveConnection();
+  window.NoevraProviders?.selectProvider(provider);
 }
 function updateModelLabels() {
   $("composerModel").textContent = shortModel(state.model);
@@ -490,11 +448,12 @@ function connectStream(jobId) {
       data.log?.detail || "",
     );
   });
-  receive("done", (data) => {
+  receive("done", async () => {
     stopObservation();
     state.running = false;
     $("startResearchBtn").disabled = false;
-    displayReport({ ...data, query: state.query });
+    if (state.view === "running") await loadReport(jobId, false);
+    else notify("Your research is ready. Open it from the library.");
     loadJobs();
   });
   stream.addEventListener("error", (event) => {
@@ -525,7 +484,8 @@ async function pollJob(jobId) {
     state.pollAttempts = 0;
     setProgress(job.progress_pct, job.current_step);
     if (job.status === "done") {
-      await loadReport(jobId, false);
+      if (state.view === "running") await loadReport(jobId, false);
+      else notify("Your research is ready. Open it from the library.");
       state.running = false;
       $("startResearchBtn").disabled = false;
       loadJobs();
@@ -932,7 +892,7 @@ function bindEvents() {
     if (action === "model") openModelSettings();
     if (action === "manage-model") {
       $("settingsDialog").close();
-      openModelSettings();
+      window.ScholarWorkspace.openSettings("connections");
     }
     if (action === "how") openDialog("helpDialog");
     if (action === "refresh") {
@@ -979,23 +939,34 @@ function bindEvents() {
     const format = event.target.closest("[data-export]")?.dataset.export;
     if (format) exportReport(format);
   });
+  $("cancelResearchBtn").addEventListener("click", async () => {
+    if (!state.running || !state.jobId) return;
+    $("cancelResearchBtn").disabled = true;
+    try {
+      await request(`/api/v1/research/${encodeURIComponent(state.jobId)}`, {
+        method: "DELETE",
+      });
+      failResearch("Research cancelled. You can start a new investigation.");
+      loadJobs();
+    } catch (error) {
+      notify(error.message, true);
+    } finally {
+      $("cancelResearchBtn").disabled = false;
+    }
+  });
   $("researchForm").addEventListener("submit", startResearch);
   $("queryInput").addEventListener("input", () => {
     $("queryInput").removeAttribute("aria-invalid");
     $("formError").hidden = true;
   });
   $("providerSelect").addEventListener("change", () => {
-    saveConnection();
     populateConnection($("providerSelect").value);
   });
-  for (const id of [
-    "modelSelect",
-    "customModel",
-    "apiKeyInput",
-    "baseUrlInput",
-  ])
+  for (const id of ["modelSelect", "customModel"])
     $(id).addEventListener("input", saveConnection);
-  $("modelDialog").addEventListener("close", saveConnection);
+  $("modelSelect").addEventListener("change", () =>
+    window.NoevraProviders.selectModel(true),
+  );
   $("revealKeyBtn").addEventListener("click", () => {
     const reveal = $("apiKeyInput").type === "password";
     $("apiKeyInput").type = reveal ? "text" : "password";
@@ -1070,6 +1041,8 @@ async function init() {
   window.ScholarControls.init();
   updateThemeButton();
   bindEvents();
+  window.NoevraProviders.init();
+  if (!(await window.NoevraProviders.unlock())) return;
   await Promise.allSettled([loadProviders(), loadJobs()]);
   await window.ScholarWorkspace.handleOAuthCallback();
   window.ScholarControls.sync();

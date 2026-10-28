@@ -36,6 +36,7 @@
     <script src="/static/oauth.js" defer></script>
     <script src="/static/app.js" defer></script>
     <script src="/static/workspace.js" defer></script>
+    <script src="/static/providers.js" defer></script>
   </head>
   <body>
     <svg
@@ -365,6 +366,9 @@
             <span class="live-label"><span></span>Research in progress</span>
             <h1 id="activeQueryTitle"></h1>
             <p id="runningMeta"></p>
+            <button class="text-button" id="cancelResearchBtn" type="button">
+              Cancel research
+            </button>
           </div>
           <div class="progress-section">
             <div class="progress-caption">
@@ -637,7 +641,7 @@
       </div>
       <div class="settings-body">
         <section class="settings-section">
-          <h3>Model connection</h3>
+          <h3>Choose your research model</h3>
           <div class="field">
             <label for="providerSelect">Provider</label
             ><select id="providerSelect">
@@ -645,84 +649,47 @@
             </select>
           </div>
           <div class="field">
+            <label for="modelSearch">Find a model</label
+            ><input
+              id="modelSearch"
+              type="search"
+              placeholder="Search available models"
+              autocomplete="off"
+            />
+          </div>
+          <div class="field">
             <label for="modelSelect">Model</label
             ><select id="modelSelect"></select>
           </div>
-          <div class="field">
-            <label for="customModel"
-              >Use a different model <span>Optional</span></label
-            ><input
-              id="customModel"
-              placeholder="Enter the exact model identifier"
-              autocomplete="off"
-            />
-            <p>
-              Overrides the selection above. Availability depends on your
-              provider.
-            </p>
-          </div>
-          <div class="connection-status" id="connectionStatus"></div>
-          <div class="oauth-connection" id="oauthConnection" hidden>
+          <details class="advanced-model">
+            <summary>Advanced model override</summary>
+            <div class="field">
+              <label for="customModel"
+                >Use a different model <span>Optional</span></label
+              ><input
+                id="customModel"
+                placeholder="Enter the exact model identifier"
+                autocomplete="off"
+              />
+              <p>
+                Uses an exact model ID without catalog verification.
+                Availability depends on your provider.
+              </p>
+            </div>
+          </details>
+          <p id="catalogStatus" role="status" class="connection-status">
+            Connect a provider to discover models.
+          </p>
+          <div class="connection-actions">
             <button
               class="secondary-button"
-              id="connectOpenRouterBtn"
+              id="refreshModelsBtn"
               type="button"
             >
-              Continue with OpenRouter<svg class="icon">
-                <use href="#i-external" />
-              </svg>
+              Refresh models</button
+            ><button class="text-button" id="manageConnectionBtn" type="button">
+              Manage connection
             </button>
-            <button
-              class="text-button"
-              id="disconnectOpenRouterBtn"
-              type="button"
-              hidden
-            >
-              Disconnect this tab
-            </button>
-            <p id="oauthStatus">
-              Sign in securely using OAuth. Model usage is billed to your
-              OpenRouter credits. This connection lasts until you reload or
-              close this tab.
-            </p>
-            <a
-              href="https://openrouter.ai/keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              >Manage or revoke OpenRouter keys</a
-            >
-          </div>
-          <div class="field">
-            <label for="apiKeyInput"
-              >API key <span>Optional override</span></label
-            >
-            <div class="password-field">
-              <input
-                id="apiKeyInput"
-                type="password"
-                autocomplete="off"
-                placeholder="Paste your provider API key"
-              /><button
-                class="text-button"
-                id="revealKeyBtn"
-                aria-label="Show API key"
-                aria-pressed="false"
-              >
-                Show
-              </button>
-            </div>
-            <p>
-              Kept only in this tab's memory. Sent to your research server when
-              you start a job.
-            </p>
-          </div>
-          <div class="field" id="endpointField" hidden>
-            <label for="baseUrlInput">API endpoint</label
-            ><input
-              id="baseUrlInput"
-              type="url"
-              placeholder="http://localhost:11434/v1"
-            />
           </div>
         </section>
         <section class="settings-section">
@@ -789,6 +756,124 @@
           Done<svg class="icon"><use href="#i-check" /></svg>
         </button>
       </div>
+    </dialog>
+    <dialog
+      id="connectionDialog"
+      class="settings-dialog"
+      aria-labelledby="connectionTitle"
+    >
+      <div class="dialog-header">
+        <div>
+          <button class="text-button" id="backToConnections" type="button">
+            Back to all connections
+          </button>
+          <h2 id="connectionTitle">Provider connection</h2>
+          <p>Credentials and account access.</p>
+        </div>
+        <button
+          class="icon-button"
+          data-close="connectionDialog"
+          aria-label="Close connection"
+        >
+          Close
+        </button>
+      </div>
+      <div class="settings-body">
+        <section class="settings-section">
+          <div class="connection-status" id="connectionStatus"></div>
+          <div class="oauth-connection" id="oauthConnection" hidden>
+            <button
+              class="secondary-button"
+              id="connectProviderBtn"
+              type="button"
+            >
+              Continue with account<svg class="icon">
+                <use href="#i-external" />
+              </svg>
+            </button>
+            <button
+              class="text-button"
+              id="disconnectProviderBtn"
+              type="button"
+              hidden
+            >
+              Remove tab credentials
+            </button>
+            <p id="oauthStatus">
+              Sign in securely using OAuth. Model usage is billed to your
+              OpenRouter credits. This connection lasts until you reload or
+              close this tab.
+            </p>
+            <a id="providerAuthDocs" target="_blank" rel="noopener noreferrer"
+              >Provider authorization guide</a
+            >
+          </div>
+          <div class="field">
+            <label for="apiKeyInput"
+              >API key <span>Optional override</span></label
+            >
+            <div class="password-field">
+              <input
+                id="apiKeyInput"
+                type="password"
+                autocomplete="off"
+                placeholder="Paste your provider API key"
+              /><button
+                class="text-button"
+                id="revealKeyBtn"
+                aria-label="Show API key"
+                aria-pressed="false"
+              >
+                Show
+              </button>
+            </div>
+            <p>
+              Kept only in this tab's memory. Sent to your research server to
+              discover models and run research.
+            </p>
+          </div>
+          <div class="field" id="endpointField" hidden>
+            <label for="baseUrlInput">API endpoint</label
+            ><input
+              id="baseUrlInput"
+              type="url"
+              placeholder="http://localhost:11434/v1"
+            />
+          </div>
+          <button class="primary-button" id="saveProviderBtn" type="button">
+            Save & discover models</button
+          ><button class="secondary-button" id="useProviderBtn" type="button">
+            Choose a model
+          </button>
+        </section>
+      </div>
+      <div class="dialog-footer">
+        <span>Credentials are never saved in browser storage.</span>
+      </div>
+    </dialog>
+    <dialog id="unlockDialog" class="help-dialog" aria-labelledby="unlockTitle">
+      <form id="unlockForm">
+        <div class="dialog-header">
+          <div>
+            <h2 id="unlockTitle">Your research workspace.</h2>
+            <p>Enter the workspace password to continue.</p>
+          </div>
+        </div>
+        <div class="settings-body">
+          <div class="field">
+            <label for="workspacePassword">Workspace password</label
+            ><input
+              id="workspacePassword"
+              type="password"
+              autocomplete="current-password"
+              required
+              maxlength="1024"
+            />
+          </div>
+          <p id="unlockError" role="alert"></p>
+          <button class="primary-button" type="submit">Unlock workspace</button>
+        </div>
+      </form>
     </dialog>
     <dialog
       id="settingsDialog"
@@ -908,29 +993,14 @@
           <section data-settings-panel="connections" hidden>
             <h3>Connect on your terms.</h3>
             <p class="settings-intro">
-              OAuth is available for OpenRouter. Other providers use an API key
-              or your own local endpoint.
+              Connect an account once, then choose from its live model catalog
+              in Research setup.
             </p>
-            <div class="account-connection">
-              <span class="account-avatar">O</span>
-              <div>
-                <strong>OpenRouter</strong>
-                <p id="globalOAuthStatus">Not connected in this tab</p>
-              </div>
-              <button class="secondary-button" id="globalConnectBtn">
-                Connect
-              </button>
-            </div>
+            <div id="providerConnections" class="provider-connections"></div>
             <p class="settings-explanation">
-              Keys remain in this tab's memory. Disconnecting here removes the
-              local connection; revoke a generated key in your OpenRouter
-              account to invalidate it at the provider.
+              Credentials stay in this tab's memory. OAuth availability follows
+              each provider's authorization policy.
             </p>
-            <button class="text-button" data-action="manage-model">
-              Manage providers & credentials<svg class="icon">
-                <use href="#i-arrow" />
-              </svg>
-            </button>
           </section>
         </div>
       </div>
@@ -954,8 +1024,8 @@
       </div>
       <div class="help-content">
         <p>
-          Noevra plans a search, gathers sources, checks evidence, writes
-          a report and reviews its coverage.
+          Noevra plans a search, gathers sources, checks evidence, writes a
+          report and reviews its coverage.
         </p>
         <ol>
           <li>

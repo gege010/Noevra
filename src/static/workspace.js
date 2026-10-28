@@ -95,7 +95,8 @@
       );
     root.ScholarControls?.close();
   }
-  function openSettings() {
+  function openSettings(tab) {
+    if (tab) settingsTab(tab);
     for (const [id, key] of Object.entries({
       defaultProvider: "provider",
       defaultDepth: "depth",
@@ -161,115 +162,10 @@
     requestNavigationUpdate();
   }
   function updateOAuthStatus() {
-    const connected =
-      state.connections.openrouter?.auth === "oauth" &&
-      Boolean(state.connections.openrouter?.key);
-    if (state.settingsProvider === "openrouter")
-      $("connectionStatus").textContent = connected
-        ? "Connected using OAuth for this tab."
-        : "Connect your OpenRouter account below, or supply an API key.";
-    $("globalOAuthStatus").textContent = connected
-      ? "Connected for this tab"
-      : "Not connected in this tab";
-    $("globalConnectBtn").textContent = connected ? "Manage" : "Connect";
-    $("connectOpenRouterBtn").hidden = connected;
-    $("disconnectOpenRouterBtn").hidden = !connected;
-    $("oauthStatus").textContent = connected
-      ? "Your OpenRouter account is connected. Credentials stay in memory until this tab reloads or closes."
-      : "Sign in securely using OAuth. Model usage is billed to your OpenRouter credits. This connection lasts until you reload or close this tab.";
-  }
-  async function connectOAuth() {
-    if (state.running) {
-      notify("Wait for the current research to finish before signing in.");
-      return;
-    }
-    const button = $("connectOpenRouterBtn");
-    button.disabled = true;
-    button.setAttribute("aria-busy", "true");
-    try {
-      if (!isSecureContext || !crypto.subtle)
-        throw new Error("OAuth requires HTTPS, localhost, or 127.0.0.1.");
-      const pending = await root.ScholarOAuth.createPKCE();
-      sessionStorage.setItem(
-        "scholar_oauth_pending",
-        JSON.stringify({ ...pending, draft: $("queryInput").value }),
-      );
-      const callback = location.origin + location.pathname;
-      location.assign(
-        root.ScholarOAuth.authorizationUrl(
-          callback,
-          pending.challenge,
-          pending.state,
-        ),
-      );
-    } catch (error) {
-      notify(error.message || "Could not start sign-in. Try again.", true);
-      button.disabled = false;
-      button.removeAttribute("aria-busy");
-    }
+    root.NoevraProviders?.renderConnections();
   }
   async function handleOAuthCallback() {
-    const params = new URLSearchParams(location.search);
-    const code = params.get("code"),
-      error = params.get("error");
-    if (!code && !error) return;
-    const returnedState = params.get("state");
-    params.delete("code");
-    params.delete("state");
-    params.delete("error");
-    params.delete("error_description");
-    history.replaceState(
-      null,
-      "",
-      location.pathname +
-        (params.size ? "?" + params.toString() : "") +
-        location.hash,
-    );
-    let pending;
-    try {
-      pending = JSON.parse(
-        sessionStorage.getItem("scholar_oauth_pending") || "null",
-      );
-      sessionStorage.removeItem("scholar_oauth_pending");
-    } catch {}
-    if (pending?.draft) $("queryInput").value = pending.draft;
-    if (error) {
-      notify(
-        "OpenRouter sign-in was not completed. You can connect again from Settings.",
-        true,
-      );
-      return;
-    }
-    if (!root.ScholarOAuth.validatePending(pending, returnedState)) {
-      notify(
-        "This sign-in expired or does not match this tab. Connect again from Settings.",
-        true,
-      );
-      return;
-    }
-    try {
-      const response = await request("/api/v1/auth/openrouter/exchange", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, code_verifier: pending.verifier }),
-      });
-      if (!state.providers.openrouter)
-        throw new Error(
-          "Provider settings could not be loaded. Refresh and connect again.",
-        );
-      state.connections.openrouter = {
-        ...state.connections.openrouter,
-        key: response.key,
-        auth: "oauth",
-      };
-      state.provider = "openrouter";
-      $("providerSelect").value = "openrouter";
-      populateConnection("openrouter");
-      updateOAuthStatus();
-      notify("OpenRouter connected. Your research will use this account.");
-    } catch (error) {
-      notify(error.message || "Could not complete OpenRouter sign-in.", true);
-    }
+    await root.NoevraProviders?.handleCallback();
   }
   function init() {
     try {
@@ -379,24 +275,6 @@
         if (preferences.theme === "system") applyAppearance();
       },
     );
-    $("connectOpenRouterBtn").addEventListener("click", connectOAuth);
-    $("globalConnectBtn").addEventListener("click", () => {
-      $("settingsDialog").close();
-      $("providerSelect").value = "openrouter";
-      populateConnection("openrouter");
-      openModelSettings();
-    });
-    $("disconnectOpenRouterBtn").addEventListener("click", () => {
-      if (state.connections.openrouter) {
-        state.connections.openrouter.key = "";
-        state.connections.openrouter.auth = "key";
-      }
-      if (state.settingsProvider === "openrouter") $("apiKeyInput").value = "";
-      updateOAuthStatus();
-      notify(
-        "OpenRouter disconnected from this tab. Revoke the key in OpenRouter to invalidate it.",
-      );
-    });
     updateOAuthStatus();
   }
   root.ScholarWorkspace = {

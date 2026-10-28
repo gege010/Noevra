@@ -3045,3 +3045,78 @@ select.enhanced-select {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Provider settings retain the workspace's quiet editorial rhythm. */
+.provider-connections {
+  border-top: 1px solid var(--line, #ddd);
+}
+.provider-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 17px 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line, #ddd);
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+.provider-row:hover {
+  background: var(--surface-alt, rgba(120, 120, 100, 0.06));
+}
+.provider-row > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.provider-row strong,
+.provider-row small {
+  display: block;
+}
+.provider-row small {
+  font-size: 12px;
+  line-height: 1.6;
+  opacity: 0.75;
+}
+.provider-row .auth-method {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+.connection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+#connectionDialog .settings-body {
+  display: block;
+}
+#connectionDialog .settings-section {
+  border: 0;
+}
+#backToConnections {
+  margin-bottom: 14px;
+}
+#catalogStatus {
+  min-height: 2.8em;
+  overflow-wrap: anywhere;
+}
+#unlockError {
+  color: var(--danger, #a33);
+}
+
+.advanced-model {
+  margin: 12px 0;
+}
+.advanced-model summary {
+  color: var(--secondary);
+  cursor: pointer;
+  padding: 10px 0;
+  font-size: 12px;
+}
+.advanced-model[open] summary {
+  margin-bottom: 8px;
+}
