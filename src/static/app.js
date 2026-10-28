@@ -109,6 +109,9 @@ function closeNavigation() {
   if ($("navigationDialog").open) $("navigationDialog").close();
 }
 function showView(view) {
+  if (view !== "report" && /^#section-/.test(location.hash))
+    history.replaceState(null, "", location.pathname + location.search);
+  window.ScholarControls?.close();
   closeNavigation();
   state.view = view;
   for (const name of ["home", "running", "report", "library"])
@@ -142,6 +145,7 @@ function newResearch() {
   state.query = "";
   $("queryInput").value = "";
   $("formError").hidden = true;
+  window.ScholarWorkspace?.applyDefaults();
   showView("home");
   $("queryInput").focus();
 }
@@ -151,7 +155,10 @@ function openDialog(id) {
 }
 function saveConnection() {
   if (!state.settingsProvider) return;
+  const previous = state.connections[state.settingsProvider];
   state.connections[state.settingsProvider] = {
+    auth:
+      previous?.key === $("apiKeyInput").value.trim() ? previous?.auth : "key",
     key: $("apiKeyInput").value.trim(),
     endpoint: $("baseUrlInput").value.trim(),
     custom: $("customModel").value.trim(),
@@ -186,6 +193,7 @@ function populateConnection(provider) {
       : provider === "custom"
         ? "http://localhost:1234/v1"
         : "");
+  $("oauthConnection").hidden = provider !== "openrouter";
   $("connectionStatus").textContent = ["ollama", "custom"].includes(provider)
     ? "Uses your endpoint. Connection and model availability are checked when research starts."
     : info.configured_in_backend
@@ -195,18 +203,27 @@ function populateConnection(provider) {
 }
 function updateModelLabels() {
   $("composerModel").textContent = shortModel(state.model);
-  $("railProvider").textContent = displayProvider(state.provider);
-  $("railModel").textContent = shortModel(state.model);
+  window.ScholarControls?.sync();
+  window.ScholarWorkspace?.updateOAuthStatus();
 }
-function openSettings() {
+function openModelSettings() {
   $("providerSelect").value = state.provider;
   if (state.providers[state.provider]) populateConnection(state.provider);
-  openDialog("settingsDialog");
+  openDialog("modelDialog");
 }
 async function loadProviders() {
   try {
     state.providers = await request("/api/v1/research/providers");
     const entries = Object.keys(state.providers);
+    $("defaultProvider").innerHTML = entries
+      .map(
+        (key) =>
+          `<option value="${esc(key)}">${esc(displayProvider(key))}</option>`,
+      )
+      .join("");
+    const preferred = window.ScholarWorkspace?.preferences.provider;
+    if (entries.includes(preferred)) state.provider = preferred;
+    $("defaultProvider").value = state.provider;
     $("providerSelect").innerHTML = entries
       .map(
         (key) =>
@@ -382,7 +399,7 @@ async function startResearch(event) {
       !state.model ||
       (!$("includeAcademic").checked && !$("includeWeb").checked)
     )
-      openSettings();
+      openModelSettings();
     else $("queryInput").focus();
     return;
   }
@@ -761,8 +778,10 @@ function displayReport(data, reportJobId = state.jobId) {
   renderEvidence();
   renderSources();
   renderProcess();
+  window.ScholarWorkspace?.setupReportNavigation();
   setReportTab("Document");
   showView("report");
+  window.ScholarWorkspace?.updateReportNavigation();
 }
 function setReportTab(name, focus = false) {
   for (const tab of document.querySelectorAll("[data-tab]")) {
@@ -893,13 +912,9 @@ async function exportReport(format) {
   }
 }
 function toggleTheme() {
-  const theme =
-    document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-  document.documentElement.dataset.theme = theme;
-  try {
-    localStorage.setItem("scholar_theme", theme);
-  } catch {}
-  updateThemeButton();
+  window.ScholarWorkspace.setTheme(
+    document.documentElement.dataset.theme === "dark" ? "light" : "dark",
+  );
 }
 function updateThemeButton() {
   const dark = document.documentElement.dataset.theme === "dark";
@@ -913,7 +928,12 @@ function bindEvents() {
   document.addEventListener("click", (event) => {
     const action = event.target.closest("[data-action]")?.dataset.action;
     if (action === "new") newResearch();
-    if (action === "settings") openSettings();
+    if (action === "settings") window.ScholarWorkspace.openSettings();
+    if (action === "model") openModelSettings();
+    if (action === "manage-model") {
+      $("settingsDialog").close();
+      openModelSettings();
+    }
     if (action === "how") openDialog("helpDialog");
     if (action === "refresh") {
       loadJobs();
@@ -975,7 +995,7 @@ function bindEvents() {
     "baseUrlInput",
   ])
     $(id).addEventListener("input", saveConnection);
-  $("settingsDialog").addEventListener("close", saveConnection);
+  $("modelDialog").addEventListener("close", saveConnection);
   $("revealKeyBtn").addEventListener("click", () => {
     const reveal = $("apiKeyInput").type === "password";
     $("apiKeyInput").type = reveal ? "text" : "password";
@@ -1046,9 +1066,13 @@ async function init() {
     for (const key of Object.keys(localStorage))
       if (key.startsWith("scholar_key_")) localStorage.removeItem(key);
   } catch {}
+  window.ScholarWorkspace.init();
+  window.ScholarControls.init();
   updateThemeButton();
   bindEvents();
   await Promise.allSettled([loadProviders(), loadJobs()]);
+  await window.ScholarWorkspace.handleOAuthCallback();
+  window.ScholarControls.sync();
 }
 if (typeof module !== "undefined" && module.exports)
   module.exports = { esc, safeUrl, inlineMarkdown, renderMarkdown };

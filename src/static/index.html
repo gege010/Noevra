@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
     <meta name="theme-color" content="#f8f9f6" />
     <meta
       name="description"
@@ -31,7 +32,10 @@
       src="/static/vendor/katex/contrib/auto-render.min.js"
       defer
     ></script>
+    <script src="/static/controls.js" defer></script>
+    <script src="/static/oauth.js" defer></script>
     <script src="/static/app.js" defer></script>
+    <script src="/static/workspace.js" defer></script>
   </head>
   <body>
     <svg
@@ -40,6 +44,10 @@
       aria-hidden="true"
     >
       <defs>
+        <symbol id="i-panel" viewBox="0 0 24 24">
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <path d="M9 4v16m6-11-3 3 3 3" />
+        </symbol>
         <symbol id="i-plus" viewBox="0 0 24 24">
           <path d="M12 5v14M5 12h14" />
         </symbol>
@@ -111,26 +119,55 @@
       </defs>
     </svg>
     <a href="#mainContent" class="skip-link">Skip to content</a>
-    <aside class="rail" aria-label="Workspace navigation">
-      <a class="wordmark" href="/" aria-label="ScholarAgent home"
-        ><span class="brand-mark" aria-hidden="true"
-          ><svg viewBox="0 0 32 32">
-            <path d="M5 7h8l3 5 3-5h8v18h-8l-3-5-3 5H5Z" />
-            <path d="M16 12v8M9 12h3m8 0h3M9 20h3m8 0h3" /></svg></span
-        >ScholarAgent<span class="wordmark-period">.</span></a
+    <aside class="rail" id="workspaceRail" aria-label="Workspace navigation">
+      <div class="rail-top">
+        <a class="wordmark" href="/" aria-label="ScholarAgent home"
+          ><span class="brand-mark" aria-hidden="true"
+            ><svg viewBox="0 0 32 32">
+              <path d="M5 7h8l3 5 3-5h8v18h-8l-3-5-3 5H5Z" />
+              <path d="M16 12v8M9 12h3m8 0h3M9 20h3m8 0h3" /></svg></span
+          ><span class="brand-name"
+            >ScholarAgent<span class="wordmark-period">.</span></span
+          ></a
+        >
+        <button
+          class="icon-button sidebar-toggle"
+          id="sidebarToggle"
+          aria-label="Minimize sidebar"
+          title="Minimize sidebar"
+          aria-expanded="true"
+          aria-controls="workspaceRail"
+        >
+          <svg class="icon"><use href="#i-panel" /></svg>
+        </button>
+      </div>
+      <button
+        class="new-research"
+        data-action="new"
+        aria-label="New research"
+        title="New research"
       >
-      <button class="new-research" data-action="new">
         <svg class="icon"><use href="#i-plus" /></svg><span>New research</span
         ><kbd>Ctrl K</kbd>
       </button>
       <nav class="primary-nav">
-        <button class="nav-link active" data-view="home">
-          <svg class="icon"><use href="#i-search" /></svg>Research</button
-        ><button class="nav-link" data-view="library">
-          <svg class="icon"><use href="#i-book" /></svg>Library<span
-            class="nav-count"
-            id="libraryCount"
-          ></span>
+        <button
+          class="nav-link active"
+          data-view="home"
+          aria-label="Research"
+          title="Research"
+        >
+          <svg class="icon"><use href="#i-search" /></svg
+          ><span class="nav-label">Research</span></button
+        ><button
+          class="nav-link"
+          data-view="library"
+          aria-label="Library"
+          title="Library"
+        >
+          <svg class="icon"><use href="#i-book" /></svg
+          ><span class="nav-label">Library</span
+          ><span class="nav-count" id="libraryCount"></span>
         </button>
       </nav>
       <div class="rail-recents">
@@ -153,12 +190,19 @@
           <svg class="icon"><use href="#i-book" /></svg>
           <p>Every conclusion deserves<br />a source you can inspect.</p>
         </div>
-        <button class="connection-button" data-action="settings">
-          <span class="connection-avatar">S</span
-          ><span
-            ><strong id="railProvider">Model settings</strong
-            ><small id="railModel">Choose your research model</small></span
-          ><svg class="icon"><use href="#i-sliders" /></svg>
+        <button
+          class="connection-button"
+          data-action="settings"
+          aria-label="Workspace settings"
+          title="Workspace settings"
+        >
+          <span class="settings-symbol"
+            ><svg class="icon"><use href="#i-sliders" /></svg
+          ></span>
+          <span class="settings-copy"
+            ><strong>Settings & customization</strong
+            ><small>Make the workspace yours</small></span
+          >
         </button>
       </div>
     </aside>
@@ -228,7 +272,7 @@
                     ><button
                       type="button"
                       class="model-control"
-                      data-action="settings"
+                      data-action="model"
                     >
                       <span class="model-dot"></span
                       ><span id="composerModel">Choose model</span
@@ -574,19 +618,19 @@
       </main>
     </div>
     <dialog
-      id="settingsDialog"
+      id="modelDialog"
       class="settings-dialog"
-      aria-labelledby="settingsTitle"
+      aria-labelledby="modelTitle"
     >
       <div class="dialog-header">
         <div>
-          <h2 id="settingsTitle">Make it your workspace.</h2>
-          <p>Your model, your research preferences.</p>
+          <h2 id="modelTitle">Research setup.</h2>
+          <p>Model and sources for this investigation.</p>
         </div>
         <button
           class="icon-button"
-          data-close="settingsDialog"
-          aria-label="Close settings"
+          data-close="modelDialog"
+          aria-label="Close research setup"
         >
           <svg class="icon"><use href="#i-close" /></svg>
         </button>
@@ -618,6 +662,36 @@
             </p>
           </div>
           <div class="connection-status" id="connectionStatus"></div>
+          <div class="oauth-connection" id="oauthConnection" hidden>
+            <button
+              class="secondary-button"
+              id="connectOpenRouterBtn"
+              type="button"
+            >
+              Continue with OpenRouter<svg class="icon">
+                <use href="#i-external" />
+              </svg>
+            </button>
+            <button
+              class="text-button"
+              id="disconnectOpenRouterBtn"
+              type="button"
+              hidden
+            >
+              Disconnect this tab
+            </button>
+            <p id="oauthStatus">
+              Sign in securely using OAuth. Model usage is billed to your
+              OpenRouter credits. This connection lasts until you reload or
+              close this tab.
+            </p>
+            <a
+              href="https://openrouter.ai/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Manage or revoke OpenRouter keys</a
+            >
+          </div>
           <div class="field">
             <label for="apiKeyInput"
               >API key <span>Optional override</span></label
@@ -710,9 +784,160 @@
         </section>
       </div>
       <div class="dialog-footer">
-        <span>Changes apply to your next research.</span
-        ><button class="primary-button" data-close="settingsDialog">
+        <span>These choices apply to this investigation.</span
+        ><button class="primary-button" data-close="modelDialog">
           Done<svg class="icon"><use href="#i-check" /></svg>
+        </button>
+      </div>
+    </dialog>
+    <dialog
+      id="settingsDialog"
+      class="workspace-settings-dialog"
+      aria-labelledby="workspaceSettingsTitle"
+    >
+      <div class="dialog-header">
+        <div>
+          <h2 id="workspaceSettingsTitle">Your workspace.</h2>
+          <p>Small adjustments. A better place to think.</p>
+        </div>
+        <button
+          class="icon-button"
+          data-close="settingsDialog"
+          aria-label="Close workspace settings"
+        >
+          <svg class="icon"><use href="#i-close" /></svg>
+        </button>
+      </div>
+      <div class="workspace-settings-layout">
+        <nav class="settings-navigation" aria-label="Settings categories">
+          <button
+            class="active"
+            data-settings-tab="appearance"
+            aria-pressed="true"
+          >
+            Appearance</button
+          ><button data-settings-tab="defaults" aria-pressed="false">
+            Research defaults</button
+          ><button data-settings-tab="connections" aria-pressed="false">
+            Connections
+          </button>
+        </nav>
+        <div class="workspace-settings-content">
+          <section data-settings-panel="appearance">
+            <h3>A workspace that suits you.</h3>
+            <p class="settings-intro">
+              Personalize the interface and the way reports read.
+            </p>
+            <div class="field">
+              <label for="appearanceTheme">Color theme</label
+              ><select id="appearanceTheme">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">Follow system</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="readingSize">Report text size</label
+              ><select id="readingSize">
+                <option value="standard">Standard</option>
+                <option value="large">Large</option>
+                <option value="extra">Extra large</option>
+              </select>
+            </div>
+            <label class="preference-toggle"
+              ><span
+                ><strong>Compact sidebar</strong
+                ><small
+                  >Keep navigation icons, give content more room.</small
+                ></span
+              ><input type="checkbox" id="compactSidebar" role="switch"
+            /></label>
+            <label class="preference-toggle"
+              ><span
+                ><strong>Reduce motion</strong
+                ><small
+                  >Use immediate changes instead of animated transitions.</small
+                ></span
+              ><input type="checkbox" id="reduceMotion" role="switch"
+            /></label>
+          </section>
+          <section data-settings-panel="defaults" hidden>
+            <h3>Your starting point.</h3>
+            <p class="settings-intro">
+              Used for new research. Each investigation can still have its own
+              setup.
+            </p>
+            <div class="field">
+              <label for="defaultProvider">Default provider</label
+              ><select id="defaultProvider"></select>
+            </div>
+            <div class="field">
+              <label for="defaultDepth">Research depth</label
+              ><select id="defaultDepth">
+                <option value="quick">Quick brief</option>
+                <option value="standard">In-depth research</option>
+                <option value="deep">Deep investigation</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="defaultLanguage">Report language</label
+              ><select id="defaultLanguage">
+                <option value="en">English</option>
+                <option value="id">Bahasa Indonesia</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="defaultCitation">Citation style</label
+              ><select id="defaultCitation">
+                <option value="ieee">IEEE</option>
+                <option value="apa">APA</option>
+                <option value="nature">Nature</option>
+                <option value="harvard">Harvard</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="defaultSources">Source budget</label
+              ><select id="defaultSources">
+                <option value="10">Up to 10 sources</option>
+                <option value="20">Up to 20 sources</option>
+                <option value="30">Up to 30 sources</option>
+                <option value="50">Up to 50 sources</option>
+              </select>
+            </div>
+          </section>
+          <section data-settings-panel="connections" hidden>
+            <h3>Connect on your terms.</h3>
+            <p class="settings-intro">
+              OAuth is available for OpenRouter. Other providers use an API key
+              or your own local endpoint.
+            </p>
+            <div class="account-connection">
+              <span class="account-avatar">O</span>
+              <div>
+                <strong>OpenRouter</strong>
+                <p id="globalOAuthStatus">Not connected in this tab</p>
+              </div>
+              <button class="secondary-button" id="globalConnectBtn">
+                Connect
+              </button>
+            </div>
+            <p class="settings-explanation">
+              Keys remain in this tab's memory. Disconnecting here removes the
+              local connection; revoke a generated key in your OpenRouter
+              account to invalidate it at the provider.
+            </p>
+            <button class="text-button" data-action="manage-model">
+              Manage providers & credentials<svg class="icon">
+                <use href="#i-arrow" />
+              </svg>
+            </button>
+          </section>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <span>Saved on this browser. Credentials are excluded.</span
+        ><button class="primary-button" data-close="settingsDialog">
+          Close settings<svg class="icon"><use href="#i-check" /></svg>
         </button>
       </div>
     </dialog>
@@ -779,7 +1004,12 @@
       </div>
       <button class="nav-link" data-action="new">
         <svg class="icon"><use href="#i-plus" /></svg>New research</button
-      ><button class="nav-link" data-view="library">
+      ><button
+        class="nav-link"
+        data-view="library"
+        aria-label="Library"
+        title="Library"
+      >
         <svg class="icon"><use href="#i-book" /></svg>Research library</button
       ><button class="nav-link" data-action="settings">
         <svg class="icon"><use href="#i-sliders" /></svg>Model & preferences
