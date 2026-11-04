@@ -2,7 +2,6 @@
 from __future__ import annotations
 import json
 import structlog
-from pydantic import BaseModel, Field
 from langchain_core.messages import SystemMessage, HumanMessage
 from src.agents.state import AgentState
 from src.agents.llm_factory import create_llm

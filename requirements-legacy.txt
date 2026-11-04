@@ -1,0 +1,3 @@
+# Optional old Streamlit client; the supported UI is served by FastAPI.
+-r requirements.txt
+streamlit==1.57.0

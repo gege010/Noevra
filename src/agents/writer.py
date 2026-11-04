@@ -62,16 +62,6 @@ async def writer_node(state: AgentState) -> dict:
     word_target = "1,200 - 1,800 words" if depth == "quick" else ("4,000 - 6,500 words" if depth == "deep" else "2,500 - 4,000 words")
 
     contract = state.get("contract", {})
-    contract_header = ""
-    if contract:
-        contract_header = f"""
-> **Research Contract Summary (as-of: {contract.get('as_of', '2026-10-08')})**  
-> **Investigation Question:** {contract.get('question', query)}  
-> **Decision Context:** {contract.get('decision_context', 'Academic literature synthesis')}  
-> **Scope Boundaries:** {contract.get('scope', 'Peer-reviewed and preprint repositories')}  
-> **Must-Resolve Subquestions:** {', '.join(contract.get('must_resolve', []))}  
-"""
-
     # Build compact token-efficient ledger representation to avoid provider TPM exhaustion
     compact_ledger = []
     for e in evidence_matrix[:12]:

@@ -2,12 +2,11 @@
 from __future__ import annotations
 import asyncio
 import re
-from typing import Any
 import httpx
 import structlog
 from bs4 import BeautifulSoup
 from src.config import get_settings
-from src.exceptions.handlers import TavilyRateLimitError, ArxivAPIError, APIError
+from src.exceptions.handlers import TavilyRateLimitError, ArxivAPIError
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -31,7 +30,7 @@ async def crossref_search(query: str, max_results: int = 8) -> list[dict]:
     No API key required.
     """
     try:
-        async with httpx.AsyncClient(headers={"User-Agent": "MultiAgentResearchAssistant/2.0 (mailto:academic-research@deepmind.edu)"}) as client:
+        async with httpx.AsyncClient(headers={"User-Agent": "Noevra/2.0 (https://github.com/gege010/Multi-Agent-Research-Assistant)"}) as client:
             resp = await client.get(
                 "https://api.crossref.org/works",
                 params={"query": query, "rows": min(max_results, 15), "sort": "relevance"},
@@ -303,25 +302,3 @@ async def web_fetch(url: str) -> str:
     except Exception as exc:
         logger.warning("web_fetch_failed", url=url, error=str(exc))
         return ""
-
-
-async def read_document(url_or_path: str) -> str:
-    """Read document text (URL or file)."""
-    if url_or_path.startswith("http"):
-        return await web_fetch(url_or_path)
-    try:
-        with open(url_or_path, "r", encoding="utf-8", errors="ignore") as f:
-            return f.read()[:10_000]
-    except Exception as exc:
-        return f"Error reading document: {exc}"
-
-
-def execute_code(code: str) -> str:
-    """Execute Python code for statistical calculations or data verification."""
-    try:
-        from langchain_experimental.utilities import PythonREPL
-        repl = PythonREPL()
-        result = repl.run(code)
-        return result if result else "Code executed successfully with no output."
-    except Exception as exc:
-        return f"Execution Error: {str(exc)}"

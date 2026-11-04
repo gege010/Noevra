@@ -2,7 +2,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from src.repositories.job_repository import JobRepository
-from src.db.models import ResearchJob
 
 @pytest.fixture
 def mock_db():
@@ -14,6 +13,7 @@ def mock_db():
 async def test_create_job(mock_db):
     repo = JobRepository(mock_db)
     job = await repo.create(job_id="test-123", query="Test query", depth="quick", sources_limit=10)
+    assert job.id == "test-123"
     mock_db.add.assert_called_once()
     mock_db.commit.assert_called_once()
     mock_db.refresh.assert_called_once()

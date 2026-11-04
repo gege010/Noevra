@@ -18,10 +18,11 @@ def test_sanitize_html_truncation():
 
 @pytest.mark.asyncio
 async def test_tavily_search_no_api_key():
-    with patch("src.agents.tools.settings") as mock_settings:
+    with patch("src.agents.tools.settings") as mock_settings, patch("src.agents.tools.open_web_search", new=AsyncMock(return_value=[])) as fallback:
         mock_settings.tavily_api_key = ""
         result = await tavily_search("test query")
         assert result == []
+        fallback.assert_awaited_once_with("test query", max_results=10)
 
 @pytest.mark.asyncio
 async def test_tavily_search_success():

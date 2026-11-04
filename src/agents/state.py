@@ -1,7 +1,6 @@
 """LangGraph agent state definitions for deep academic research."""
 from __future__ import annotations
-import operator
-from typing import Annotated, Literal, TypedDict, Any
+from typing import Literal, TypedDict, Any
 
 
 class AgentState(TypedDict):

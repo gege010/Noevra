@@ -1,11 +1,10 @@
 """Research orchestration service with real-time event streaming."""
 from __future__ import annotations
 import asyncio
-from typing import AsyncGenerator, Any
+from typing import Any
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.agents.state import default_state
-from src.agents.supervisor import get_supervisor_graph
 from src.repositories.job_repository import JobRepository
 from src.services.report_service import ReportService
 from src.config import get_settings
@@ -124,6 +123,7 @@ class ResearchService:
                 auth_type=auth_type,
             )
 
+            from src.agents.supervisor import get_supervisor_graph
             graph = get_supervisor_graph()
 
             # Execute graph nodes with progress broadcasting

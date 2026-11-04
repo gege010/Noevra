@@ -1,37 +1,25 @@
 services:
   app:
     build: .
-    container_name: research-assistant-api
     ports:
       - "127.0.0.1:8000:8000"
     env_file:
-      - .env
+      - path: .env
+        required: false
+    environment:
+      NOEVRA_APP_ROOT: /app
+      NOEVRA_DATA_DIR: /app/data
+      # Override a host .env's relative database path inside the container.
+      DATABASE_URL: ${NOEVRA_DOCKER_DATABASE_URL:-sqlite+aiosqlite:////app/data/research_assistant.db}
     volumes:
-      - ./reports:/app/reports
-      - ./data:/app/data
+      - noevra-data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/live', timeout=3)"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 15s
 
-  streamlit:
-    profiles: [legacy-ui]
-    image: python:3.11-slim
-    container_name: research-assistant-ui
-    working_dir: /app
-    command: >
-      bash -c "pip install streamlit httpx &&
-      streamlit run frontend/app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true"
-    ports:
-      - "8501:8501"
-    volumes:
-      - ./frontend:/app/frontend
-      - ./data:/app/data
-    environment:
-      - API_BASE_URL=http://app:8000
-    depends_on:
-      - app
-    restart: unless-stopped
+volumes:
+  noevra-data:

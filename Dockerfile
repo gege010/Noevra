@@ -7,10 +7,11 @@ COPY requirements.txt constraints.txt ./
 RUN pip install --no-cache-dir -r requirements.txt -c constraints.txt
 
 COPY src/ ./src/
-COPY frontend/ ./frontend/
 
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
+ENV NOEVRA_APP_ROOT=/app
+ENV NOEVRA_DATA_DIR=/app/data
 
 RUN useradd --create-home --uid 10001 noevra && mkdir -p /app/data/reports && chown -R noevra:noevra /app/data
 USER noevra

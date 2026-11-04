@@ -4,7 +4,6 @@ import asyncio
 import json
 import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import AsyncGenerator
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import FileResponse, PlainTextResponse
@@ -16,18 +15,18 @@ from src.schemas.requests import ResearchRequest
 from src.schemas.responses import ResearchResponse, ResearchStatus, ReportResponse
 from src.services.research_service import ResearchService, register_listener, unregister_listener
 from src.repositories.job_repository import JobRepository
-from src.agents.llm_factory import get_available_providers
+from src.services.provider_service import provider_metadata
+from src.config import get_settings
 
 router = APIRouter(prefix="/research", tags=["research"])
 
-REPORTS_DIR = Path("data/reports")
-REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+REPORTS_DIR = get_settings().data_dir / "reports"
 
 
 @router.get("/providers", summary="Get all available LLM providers and models")
 async def list_providers() -> dict:
     """Return list of supported providers, models, context sizes, and configuration status."""
-    return get_available_providers()
+    return provider_metadata()
 
 
 @router.post("", response_model=ResearchResponse, summary="Start research job")
@@ -248,6 +247,7 @@ async def download_markdown(job_id: str, db: AsyncSession = Depends(get_db)) -> 
     markdown = job.report_markdown or ""
     safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in job.query)[:50]
     filename = f"{job_id[:8]}_{safe_title}.md"
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     filepath = REPORTS_DIR / filename
     filepath.write_text(markdown, encoding="utf-8")
 
@@ -270,6 +270,7 @@ async def download_pdf(job_id: str, db: AsyncSession = Depends(get_db)) -> FileR
     markdown = job.report_markdown or ""
     safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in job.query)[:50]
     filename = f"{job_id[:8]}_{safe_title}.pdf"
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     filepath = REPORTS_DIR / filename
 
     try:
@@ -277,7 +278,7 @@ async def download_pdf(job_id: str, db: AsyncSession = Depends(get_db)) -> FileR
         report_service = ReportService()
         pdf_bytes = await asyncio.to_thread(report_service.markdown_to_pdf, markdown)
         await asyncio.to_thread(filepath.write_bytes, pdf_bytes)
-    except Exception as exc:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="PDF could not be generated. Download Markdown and try again.",

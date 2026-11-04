@@ -1,5 +1,6 @@
 """SQLAlchemy async database setup."""
 from __future__ import annotations
+from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from src.config import get_settings
@@ -28,6 +29,8 @@ async def get_db() -> AsyncSession:
 
 async def init_db() -> None:
     """Create all tables and migrate columns if needed."""
+    if engine.url.drivername.startswith("sqlite") and engine.url.database not in (None, "", ":memory:"):
+        Path(engine.url.database).parent.mkdir(parents=True, exist_ok=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         from sqlalchemy import inspect

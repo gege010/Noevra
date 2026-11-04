@@ -72,7 +72,6 @@ async def researcher_node(state: AgentState) -> dict:
     async def execute_search(task):
         query = task.get("search_query", state["query"])
         target_engine = task.get("target_engine", "crossref")
-        lane = task.get("lane", "primary")
 
         results = []
         try:

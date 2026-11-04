@@ -6,41 +6,44 @@ on:
   pull_request:
     branches: [main, master]
 
+permissions:
+  contents: read
+
 jobs:
   test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
-      - name: Install dependencies
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            constraints.txt
+      - name: Install tested dependencies
+        run: python -m pip install -r requirements-dev.txt -c constraints.txt
+      - name: Check dependency compatibility
+        run: python -m pip check
+      - name: Check runtime configuration without provider calls
+        run: python -m src --check
+      - name: Lint and compile
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt -c constraints.txt
-
+          python -m ruff check src tests run.py
+          python -m compileall -q src tests run.py
+      - name: Test with isolated storage and blocked provider network
+        run: python -m pytest tests/unit --cov=src --cov-report=xml
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-
-      - name: Check Python syntax
-        run: python -m compileall -q src tests
-
       - name: Test browser utilities
-        run: node --test tests/*.test.cjs
-
-      - name: Run unit tests
-        run: pytest tests/ -v --tb=short
-
-      - name: Generate coverage report
-        if: github.event_name == 'push'
-        run: pip install pytest-cov && pytest tests/ --cov=src --cov-report=xml
-
-      - name: Upload coverage to Codecov
-        if: github.event_name == 'push'
-        uses: codecov/codecov-action@v4
+        run: node --test tests/oauth-client.test.cjs tests/provider-picker.test.cjs tests/ui-renderer.test.cjs
+      - name: Build installable package
+        run: python -m pip wheel --no-deps --wheel-dir dist .

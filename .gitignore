@@ -1,7 +1,8 @@
 .claude/
 .env
 docs/
-data/           # DB + generated reports
+# Databases and generated reports (tracked examples are preserved)
+/data/
 *.db
 venv/
 __pycache__/
@@ -10,3 +11,11 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+.venv/
+.env.*
+!.env.example
+build/
+dist/
+*.egg-info/
+.ruff_cache/
+coverage.xml

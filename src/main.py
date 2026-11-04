@@ -13,7 +13,7 @@ import secrets
 
 from src.api.router import api_router
 from src.config import get_settings
-from src.db.database import init_db
+from src.db.database import init_db, engine
 from src.exceptions.handlers import register_exception_handlers
 
 settings = get_settings()
@@ -35,14 +35,21 @@ structlog.configure(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
+    from src.db.locking import local_database_lock
     from src.db.database import async_session_maker
     from src.repositories.job_repository import JobRepository
     from src.services.job_runtime import runtime
-    async with async_session_maker() as db:
-        await JobRepository(db).recover_interrupted()
-    yield
-    await runtime.close()
+    local_path = engine.url.database if engine.url.drivername.startswith("sqlite") else None
+    with local_database_lock(local_path):
+        try:
+            await init_db()
+            async with async_session_maker() as db:
+                await JobRepository(db).recover_interrupted()
+            yield
+        finally:
+            await runtime.close()
+            await engine.dispose()
+
 
 
 app = FastAPI(

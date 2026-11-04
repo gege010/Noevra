@@ -1,6 +1,5 @@
 """Unit tests for agent state."""
-import pytest
-from src.agents.state import AgentState, default_state
+from src.agents.state import default_state
 
 
 def test_default_state_factory():

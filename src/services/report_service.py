@@ -129,7 +129,6 @@ class ReportService:
             elif line.startswith("- ") or line.startswith("* ") or re.match(r"^\d+\. ", line):
                 pdf.set_font("Workspace", "", 10)
                 pdf.set_text_color(51, 51, 51)
-                prefix = line[:2]
                 safe_cell(clean, indent=5)
             # Blockquote
             elif line.startswith(">"):
