@@ -1,10 +1,13 @@
 """Peer Reviewer agent node — acts as an exacting scientific referee evaluating paper rigor."""
+
 from __future__ import annotations
 import json
 import structlog
 from langchain_core.messages import SystemMessage, HumanMessage
 from src.agents.state import AgentState
+from src.agents.contracts import ReviewOutput, json_object
 from src.agents.llm_factory import create_llm
+from src.config import get_settings
 
 logger = structlog.get_logger()
 
@@ -37,31 +40,36 @@ async def reviewer_node(state: AgentState) -> dict:
     contract = state.get("contract", {})
     evidence_matrix = state.get("evidence_matrix", [])
     revision_count = state.get("revision_count", 0)
-    max_revisions = min(2, max(0, state.get("max_iterations", 3) - 1))
+    max_revisions = min(get_settings().revision_max, max(0, state.get("max_iterations", 3) - 1))
+    budget_exhausted = len(state.get("sources", [])) >= state.get("sources_limit", 20) or state.get(
+        "current_iteration", 0
+    ) >= state.get("max_iterations", 10)
 
     # If draft is empty or too short
     if not draft or len(draft.split()) < 200:
         return {
             "review_score": 3.0,
-            "review_critique": {"verdict": "REJECT", "feedback": "Draft too brief or missing substantive content."},
-            "status": "done" if revision_count >= max_revisions else "researching",
+            "review_critique": {
+                "verdict": "REJECT",
+                "feedback": "Draft too brief or missing substantive content.",
+            },
+            "status": "done"
+            if revision_count >= max_revisions or budget_exhausted
+            else "researching",
             "gap_analysis": "Draft lacked sufficient length and substance. Expand search on core methodology.",
             "revision_count": revision_count + 1,
-        }
-
-    # If max revisions reached, approve with editorial notice
-    if revision_count >= max_revisions:
-        logger.info("reviewer_max_revisions_reached", job_id=state.get("job_id"))
-        step_log = {
-            "node": "reviewer",
-            "title": "Research budget exhausted",
-            "detail": f"Stopped after {revision_count} revision cycles; human review required.",
-            "score": state.get("review_score", 0),
-            "verdict": "BUDGET_EXHAUSTED",
-        }
-        return {
-            "status": "done",
-            "step_logs": state.get("step_logs", []) + [step_log],
+            "step_logs": state.get("step_logs", [])
+            + [
+                {
+                    "node": "reviewer",
+                    "title": "Draft incomplete",
+                    "critique": {
+                        "verdict": "REJECT",
+                        "overall_score": None,
+                        "weaknesses": ["Draft too brief or missing substantive content."],
+                    },
+                }
+            ],
         }
 
     llm = create_llm(
@@ -109,8 +117,8 @@ Return ONLY valid JSON matching this schema:
         HumanMessage(content=prompt),
     ]
 
-    score = 8.5
-    verdict = "ACCEPTED"
+    score = 0.0
+    verdict = "UNAVAILABLE"
     critique = {}
     gap_analysis = None
     targeted_unverified = []
@@ -118,23 +126,14 @@ Return ONLY valid JSON matching this schema:
 
     try:
         response = await llm.ainvoke(messages)
-        content = response.content
-        if isinstance(content, list):
-            content = " ".join([c.get("text", "") if isinstance(c, dict) else str(c) for c in content])
-        
-        json_str = content
-        if "```json" in content:
-            json_str = content.split("```json")[1].split("```")[0].strip()
-        elif "```" in content:
-            json_str = content.split("```")[1].split("```")[0].strip()
-
-        parsed = json.loads(json_str)
-        score = float(parsed.get("overall_score", 8.0))
-        verdict = parsed.get("verdict", "ACCEPTED")
+        evaluation = ReviewOutput.model_validate(json_object(response.content))
+        parsed = evaluation.model_dump()
+        score = evaluation.overall_score
+        verdict = evaluation.verdict
         critique = parsed
-        gap_analysis = parsed.get("actionable_gaps") if verdict == "REVISE" else None
-        targeted_unverified = parsed.get("unverified_claims", [])
-        targeted_contested = parsed.get("contested_claims", [])
+        gap_analysis = evaluation.actionable_gaps if verdict == "REVISE" else None
+        targeted_unverified = evaluation.unverified_claims
+        targeted_contested = evaluation.contested_claims
     except Exception as e:
         logger.error("reviewer_evaluation_failed", error_type=type(e).__name__)
         score = 0.0
@@ -146,15 +145,18 @@ Return ONLY valid JSON matching this schema:
             "weaknesses": ["Automated review failed; human review is required."],
         }
 
-
-    passed = (score >= 7.5 and verdict == "ACCEPTED")
-    budget_exhausted = len(state.get("sources", [])) >= state.get("sources_limit", 20) or state.get("current_iteration", 0) >= state.get("max_iterations", 10)
+    passed = score >= 7.5 and verdict == "ACCEPTED"
     stop = passed or verdict == "UNAVAILABLE" or revision_count >= max_revisions or budget_exhausted
 
     step_log = {
         "node": "reviewer",
         "title": "Peer Review Complete",
-        "detail": f"Automated review: {verdict}; score {score}/10." + (" Source or iteration budget reached; unresolved findings remain for human review." if budget_exhausted and not passed else ""),
+        "detail": f"Automated review: {verdict}; score {score}/10."
+        + (
+            " Source or iteration budget reached; unresolved findings remain for human review."
+            if budget_exhausted and not passed
+            else ""
+        ),
         "score": score,
         "critique": critique,
     }
@@ -172,7 +174,8 @@ Return ONLY valid JSON matching this schema:
         return {
             "review_score": score,
             "review_critique": critique,
-            "gap_analysis": gap_analysis or "Targeted investigation required for contested and unverified claims",
+            "gap_analysis": gap_analysis
+            or "Targeted investigation required for contested and unverified claims",
             "unverified_claims": targeted_unverified,
             "contested_claims": targeted_contested,
             "revision_count": revision_count + 1,

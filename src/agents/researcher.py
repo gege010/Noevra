@@ -1,4 +1,5 @@
 """Researcher agent node — gathers academic literature and empirical data across scientific repositories."""
+
 from __future__ import annotations
 import asyncio
 import structlog
@@ -20,12 +21,13 @@ async def researcher_node(state: AgentState) -> dict:
     engine_stats = {"crossref": 0, "arxiv": 0, "pubmed": 0, "web": 0}
 
     from datetime import date
+
     current_date = date.today().isoformat()
 
     # Targeted search handling:
     # If the verifier or reviewer identified unverified or contested claims,
     # generate laser-targeted search queries specifically for those claims.
-    tasks_to_run = list(plan)
+    tasks_to_run = [] if state.get("current_iteration", 0) > 0 else list(plan)
     contested_claims = state.get("contested_claims", [])
     unverified_claims = state.get("unverified_claims", [])
     gap_analysis = state.get("gap_analysis")
@@ -33,31 +35,40 @@ async def researcher_node(state: AgentState) -> dict:
     if unverified_claims:
         for u in unverified_claims[:2]:
             claim_text = u.get("claim", str(u)) if isinstance(u, dict) else str(u)
-            tasks_to_run.insert(0, {
-                "lane": "primary",
-                "title": f"Resolve Unverified Claim: {claim_text[:40]}...",
-                "search_query": f"{state['query']} {claim_text[:60]}",
-                "target_engine": "crossref",
-                "rationale": "Directly fetch primary empirical proof for unverified claim",
-            })
+            tasks_to_run.insert(
+                0,
+                {
+                    "lane": "primary",
+                    "title": f"Resolve Unverified Claim: {claim_text[:40]}...",
+                    "search_query": f"{state['query']} {claim_text[:60]}",
+                    "target_engine": "crossref",
+                    "rationale": "Directly fetch primary empirical proof for unverified claim",
+                },
+            )
     elif contested_claims:
         for c in contested_claims[:2]:
             conflict_text = c.get("conflict", str(c)) if isinstance(c, dict) else str(c)
-            tasks_to_run.insert(0, {
-                "lane": "counter",
-                "title": f"Investigate Methodological Conflict: {conflict_text[:40]}...",
-                "search_query": f"{state['query']} {conflict_text[:60]} methodology comparison",
-                "target_engine": "crossref",
-                "rationale": "Compare contradictory empirical study designs and sample populations",
-            })
+            tasks_to_run.insert(
+                0,
+                {
+                    "lane": "counter",
+                    "title": f"Investigate Methodological Conflict: {conflict_text[:40]}...",
+                    "search_query": f"{state['query']} {conflict_text[:60]} methodology comparison",
+                    "target_engine": "crossref",
+                    "rationale": "Compare contradictory empirical study designs and sample populations",
+                },
+            )
     elif gap_analysis:
-        tasks_to_run.insert(0, {
-            "lane": "independent",
-            "title": "Address Academic Reviewer Gaps",
-            "search_query": f"{state['query']} {gap_analysis[:80]}",
-            "target_engine": "crossref",
-            "rationale": "Directly address methodological gaps identified during peer review",
-        })
+        tasks_to_run.insert(
+            0,
+            {
+                "lane": "independent",
+                "title": "Address Academic Reviewer Gaps",
+                "search_query": f"{state['query']} {gap_analysis[:80]}",
+                "target_engine": "crossref",
+                "rationale": "Directly address methodological gaps identified during peer review",
+            },
+        )
 
     depth = state.get("depth", "standard")
     per_task_limit = 4 if depth == "quick" else (8 if depth == "deep" else 6)
@@ -94,13 +105,21 @@ async def researcher_node(state: AgentState) -> dict:
             logger.warning("vector_search_failed", engine=target_engine, error=type(e).__name__)
             # Fallback to crossref
             try:
-                results = await crossref_search(query, max_results=per_task_limit) if state.get("include_academic", True) else []
+                results = (
+                    await crossref_search(query, max_results=per_task_limit)
+                    if state.get("include_academic", True)
+                    else []
+                )
             except Exception:
                 results = []
 
         return task, results
 
-    batches = await asyncio.gather(*(retrieve(task) for task in tasks_to_run[:12])) if len(existing_sources) < source_budget else []
+    batches = (
+        await asyncio.gather(*(retrieve(task) for task in tasks_to_run[:12]))
+        if len(existing_sources) < source_budget
+        else []
+    )
     # Round-robin across search vectors prevents the first engine/lane from
     # consuming the entire source budget before counter-evidence is considered.
     interleaved = []
@@ -119,7 +138,11 @@ async def researcher_node(state: AgentState) -> dict:
             doi = r.get("doi", "")
             title = r.get("title", "").lower().strip()
 
-            if (url and url in seen_urls) or (doi and doi in seen_dois) or (title and title in seen_titles):
+            if (
+                (url and url in seen_urls)
+                or (doi and doi in seen_dois)
+                or (title and title in seen_titles)
+            ):
                 continue
 
             if url:
@@ -147,7 +170,9 @@ async def researcher_node(state: AgentState) -> dict:
 
     all_sources = existing_sources + new_sources
     if not all_sources:
-        raise RuntimeError("No usable sources were retrieved. Revise the question or source settings.")
+        raise RuntimeError(
+            "No usable sources were retrieved. Revise the question or source settings."
+        )
     logger.info(
         "researcher_completed",
         job_id=state.get("job_id"),

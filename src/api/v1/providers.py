@@ -1,4 +1,5 @@
 """Account-specific model catalogs; credentials never appear in URL parameters."""
+
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from src.services.provider_service import Provider, ProviderConnection, discover_models

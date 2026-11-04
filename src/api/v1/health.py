@@ -1,4 +1,5 @@
 """Health check endpoints."""
+
 from __future__ import annotations
 import httpx
 from fastapi import APIRouter, Depends
@@ -16,6 +17,7 @@ router = APIRouter(tags=["health"])
 async def live():
     return {"status": "ok"}
 
+
 async def _check_groq() -> bool:
     settings = get_settings()
     if not settings.groq_api_key:
@@ -30,6 +32,7 @@ async def _check_groq() -> bool:
             return resp.status_code == 200
     except Exception:
         return False
+
 
 async def _check_tavily() -> bool:
     settings = get_settings()
@@ -46,6 +49,7 @@ async def _check_tavily() -> bool:
     except Exception:
         return False
 
+
 async def _check_arxiv() -> bool:
     """Check if ArXiv is reachable (public endpoint)."""
     try:
@@ -58,10 +62,14 @@ async def _check_arxiv() -> bool:
     except Exception:
         return False
 
+
 @router.get("/health", response_model=HealthResponse, summary="Health check")
 async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
     import asyncio
-    groq_up, tavily_up, arxiv_up = await asyncio.gather(_check_groq(), _check_tavily(), _check_arxiv())
+
+    groq_up, tavily_up, arxiv_up = await asyncio.gather(
+        _check_groq(), _check_tavily(), _check_arxiv()
+    )
     db_up = True
     try:
         result = await db.execute(
@@ -88,6 +96,12 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
         active_jobs=active_jobs,
     )
 
+
 @router.get("/models", summary="Model discovery instructions")
 async def list_models() -> dict:
-    return {"models": [], "discovery_url": "/api/v1/providers/{provider}/models", "method": "POST", "note": "Use a provider connection to discover live model availability."}
+    return {
+        "models": [],
+        "discovery_url": "/api/v1/providers/{provider}/models",
+        "method": "POST",
+        "note": "Use a provider connection to discover live model availability.",
+    }

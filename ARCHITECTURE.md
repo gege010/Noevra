@@ -23,7 +23,7 @@ The supported product is a local, single-owner research workspace: FastAPI serve
 
 ## Lifecycle and invariants
 
-1. Configuration is loaded from the application root or an explicit `NOEVRA_ENV_FILE`; it never depends on where a shell happened to start. SQLite paths and export paths are resolved deterministically. Installed wheels use the user's `.noevra` directory by default.
+1. Configuration is loaded from the application root or an explicit `NOEVRA_ENV_FILE`; it never depends on where a shell happened to start. SQLite paths are resolved deterministically. Downloads are generated in memory; concurrent exports do not share a file. Installed wheels use the user's `.noevra` directory by default.
 2. Startup acquires an OS lock for a local SQLite database before recovery runs. A second process cannot mark another running process's jobs interrupted. Closing the descriptor or process releases ownership; a stale filename is not an active lock.
 3. The database directory is created before connection. Compatibility upgrades preserve existing columns/data and add only known missing columns. This additive upgrade path is intentionally limited; destructive or multi-version hosted migrations need a versioned migration system.
 4. Admission records the job before its task starts. Task execution gets its own database session; a request-scoped session is never handed to a background task. Queue limits include active work.

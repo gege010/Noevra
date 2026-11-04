@@ -1,4 +1,5 @@
 """LangGraph agent state definitions for deep academic research."""
+
 from __future__ import annotations
 from typing import Literal, TypedDict, Any
 
@@ -28,8 +29,12 @@ class AgentState(TypedDict):
     # Research Contract & Investigation state (from Research Machine philosophy)
     contract: dict[str, Any]  # bounded contract: question, as_of, scope, must_resolve, stop_when
     plan: list[dict[str, Any]]  # lane-based search vectors (primary, independent, counter-evidence)
-    sources: list[dict[str, Any]]  # immutable raw sources with source_id (S-01, S-02), exact passages
-    evidence_matrix: list[dict[str, Any]]  # evidence ledger: claim_id, claim, status, evidence passages, open_questions
+    sources: list[
+        dict[str, Any]
+    ]  # immutable raw sources with source_id (S-01, S-02), exact passages
+    evidence_matrix: list[
+        dict[str, Any]
+    ]  # evidence ledger: claim_id, claim, status, evidence passages, open_questions
     verification_report: dict[str, Any]  # fact-checking verdicts & credibility scoring
     draft: str  # publication-grade academic monograph
     review_score: float

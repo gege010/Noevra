@@ -11,10 +11,21 @@ from src.schemas.requests import ResearchRequest
 
 
 def test_fabricated_passage_and_url_cannot_pass():
-    sources = [{"source_id": "S-01", "passage": "Observed in ten participants.", "url": "https://example.org/paper"}]
-    claim = {"status": "supported", "evidence": [{"source_id": "S-01", "passage": "Proven universally.", "stance": "supports"}]}
+    sources = [
+        {
+            "source_id": "S-01",
+            "passage": "Observed in ten participants.",
+            "url": "https://example.org/paper",
+        }
+    ]
+    claim = {
+        "status": "supported",
+        "evidence": [{"source_id": "S-01", "passage": "Proven universally.", "stance": "supports"}],
+    }
     assert validate_claim(claim, sources, 0, "2026-10-28")["status"] == "unverified"
-    claim["evidence"][0].update(passage="Observed in ten participants.", url="https://invented.invalid")
+    claim["evidence"][0].update(
+        passage="Observed in ten participants.", url="https://invented.invalid"
+    )
     result = validate_claim(claim, sources, 0, "2026-10-28")
     assert result["status"] == "supported"
     assert result["evidence"][0]["url"] == sources[0]["url"]
@@ -42,7 +53,14 @@ async def test_review_failure_does_not_invent_passing_score():
     assert result["review_score"] == 0
 
 
-@pytest.mark.parametrize("values", [{"query": "   "}, {"query": "valid", "include_web": False, "include_academic": False}, {"query": "valid", "provider": "unknown"}])
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"query": "   "},
+        {"query": "valid", "include_web": False, "include_academic": False},
+        {"query": "valid", "provider": "unknown"},
+    ],
+)
 def test_invalid_research_configuration(values):
     with pytest.raises(ValidationError):
         ResearchRequest(**values)

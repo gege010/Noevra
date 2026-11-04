@@ -1,4 +1,5 @@
 """FastAPI router aggregator."""
+
 from __future__ import annotations
 from fastapi import APIRouter
 from src.api.v1 import research, health, auth, providers, session

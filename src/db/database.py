@@ -1,4 +1,5 @@
 """SQLAlchemy async database setup."""
+
 from __future__ import annotations
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
@@ -19,22 +20,32 @@ async_session_maker = async_sessionmaker(
     expire_on_commit=False,
 )
 
+
 class Base(DeclarativeBase):
     pass
+
 
 async def get_db() -> AsyncSession:
     """Dependency for FastAPI route handlers."""
     async with async_session_maker() as session:
         yield session
 
+
 async def init_db() -> None:
     """Create all tables and migrate columns if needed."""
-    if engine.url.drivername.startswith("sqlite") and engine.url.database not in (None, "", ":memory:"):
+    if engine.url.drivername.startswith("sqlite") and engine.url.database not in (
+        None,
+        "",
+        ":memory:",
+    ):
         Path(engine.url.database).parent.mkdir(parents=True, exist_ok=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         from sqlalchemy import inspect
-        columns = await conn.run_sync(lambda sync: {col["name"] for col in inspect(sync).get_columns("research_jobs")})
+
+        columns = await conn.run_sync(
+            lambda sync: {col["name"] for col in inspect(sync).get_columns("research_jobs")}
+        )
         # Migrate columns if existing database has older schema
         for col, col_type in [
             ("provider", "VARCHAR(50) DEFAULT 'groq'"),
@@ -45,5 +56,6 @@ async def init_db() -> None:
             ("settings_json", "JSON"),
         ]:
             if col not in columns:
-                await conn.exec_driver_sql(f"ALTER TABLE research_jobs ADD COLUMN {col} {col_type};")
-
+                await conn.exec_driver_sql(
+                    f"ALTER TABLE research_jobs ADD COLUMN {col} {col_type};"
+                )

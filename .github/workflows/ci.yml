@@ -37,6 +37,7 @@ jobs:
       - name: Lint and compile
         run: |
           python -m ruff check src tests run.py
+          python -m ruff format --check src tests run.py
           python -m compileall -q src tests run.py
       - name: Test with isolated storage and blocked provider network
         run: python -m pytest tests/unit --cov=src --cov-report=xml

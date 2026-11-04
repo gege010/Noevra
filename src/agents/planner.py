@@ -1,9 +1,10 @@
 """Planner agent node — formulates multi-angle academic research vectors."""
+
 from __future__ import annotations
-import json
 import structlog
 from langchain_core.messages import SystemMessage, HumanMessage
 from src.agents.state import AgentState
+from src.agents.contracts import ResearchPlan, json_object
 from src.agents.llm_factory import create_llm
 
 try:
@@ -38,7 +39,7 @@ async def planner_node(state: AgentState) -> dict:
     """Break the research query into actionable, multi-source scientific search tasks."""
     depth = state.get("depth", "standard")
     target_count = 3 if depth == "quick" else (8 if depth == "deep" else 5)
-    
+
     llm = create_llm(
         provider=state.get("provider"),
         model=state.get("model"),
@@ -49,13 +50,14 @@ async def planner_node(state: AgentState) -> dict:
     )
 
     from datetime import date
+
     as_of_date = date.today().isoformat()
 
-    prompt = f"""Research Query: "{state['query']}"
+    prompt = f"""Research Query: "{state["query"]}"
 Current Date (as_of): {as_of_date}
 Depth Level: {depth.upper()} (Target: {target_count} vectors across functional lanes)
-Domain Focus: {state.get('domain_focus', 'general')}
-Output Language: {state.get('language', 'en')}
+Domain Focus: {state.get("domain_focus", "general")}
+Output Language: {state.get("language", "en")}
 
 You must formulate:
 1. A Bounded Research Contract:
@@ -72,7 +74,7 @@ You must formulate:
 Return ONLY valid JSON matching this schema:
 {{
   "contract": {{
-    "question": "{state['query']}",
+    "question": "{state["query"]}",
     "as_of": "{as_of_date}",
     "decision_context": "Explanation of what this research informs",
     "scope": "Clear boundary of analysis",
@@ -101,32 +103,27 @@ Return ONLY valid JSON matching this schema:
         "as_of": as_of_date,
         "decision_context": f"Authoritative academic analysis on {state['query']}",
         "scope": f"Scientific and empirical literature regarding {state['query']}",
-        "must_resolve": [f"Theoretical foundation of {state['query']}", f"Empirical benchmark evidence for {state['query']}"],
+        "must_resolve": [
+            f"Theoretical foundation of {state['query']}",
+            f"Empirical benchmark evidence for {state['query']}",
+        ],
         "stop_when": "The comparison is supported or remaining gaps/unknowns are explicit",
     }
 
     try:
         response = await llm.ainvoke(messages)
-        content = response.content
-        if isinstance(content, list):
-            content = " ".join([c.get("text", "") if isinstance(c, dict) else str(c) for c in content])
-        
-        # Extract JSON from markdown blocks if present
-        json_str = content
-        if "```json" in content:
-            json_str = content.split("```json")[1].split("```")[0].strip()
-        elif "```" in content:
-            json_str = content.split("```")[1].split("```")[0].strip()
-        
-        parsed = json.loads(json_str)
-        tasks = parsed.get("vectors", [])
-        if "contract" in parsed and isinstance(parsed["contract"], dict):
-            contract = parsed["contract"]
+        parsed = ResearchPlan.model_validate(json_object(response.content))
+        tasks = [vector.model_dump() for vector in parsed.vectors]
+        if parsed.contract:
+            contract = parsed.contract.model_dump(mode="json")
+            contract.update(question=state["query"], as_of=as_of_date)
     except Exception as e:
         logger.error("planner_structured_output_failed", error_type=type(e).__name__)
         # Fallback vectors organized by functional lanes
         domain = state.get("domain_focus", "general")
-        primary_engine = "pubmed" if domain == "biomedical" else ("arxiv" if domain == "cs_ai" else "crossref")
+        primary_engine = (
+            "pubmed" if domain == "biomedical" else ("arxiv" if domain == "cs_ai" else "crossref")
+        )
         tasks = [
             {
                 "lane": "primary",
@@ -151,22 +148,24 @@ Return ONLY valid JSON matching this schema:
             },
         ]
         if target_count >= 5:
-            tasks.extend([
-                {
-                    "lane": "independent",
-                    "title": "Comparative Methodology & Architectures",
-                    "search_query": f"{state['query']} comparative analysis approaches",
-                    "target_engine": primary_engine,
-                    "rationale": "Contrast competing methodological paradigms",
-                },
-                {
-                    "lane": "primary",
-                    "title": "Real-World Deployment & Case Studies",
-                    "search_query": f"{state['query']} real world implementation case studies",
-                    "target_engine": "web",
-                    "rationale": "Verify practical performance claims in production",
-                },
-            ])
+            tasks.extend(
+                [
+                    {
+                        "lane": "independent",
+                        "title": "Comparative Methodology & Architectures",
+                        "search_query": f"{state['query']} comparative analysis approaches",
+                        "target_engine": primary_engine,
+                        "rationale": "Contrast competing methodological paradigms",
+                    },
+                    {
+                        "lane": "primary",
+                        "title": "Real-World Deployment & Case Studies",
+                        "search_query": f"{state['query']} real world implementation case studies",
+                        "target_engine": "web",
+                        "rationale": "Verify practical performance claims in production",
+                    },
+                ]
+            )
 
     step_log = {
         "node": "planner",

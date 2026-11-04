@@ -1,5 +1,7 @@
 """Unit tests for Pydantic schemas."""
+
 import pytest
+from importlib.metadata import version
 from datetime import date
 from pydantic import ValidationError
 from src.schemas.requests import ResearchRequest
@@ -14,6 +16,7 @@ from src.schemas.responses import (
 
 
 # ── ResearchRequest ────────────────────────────────────────────────────────────
+
 
 def test_research_request_valid():
     req = ResearchRequest(query="Impact of LLMs on software engineering")
@@ -40,6 +43,7 @@ def test_research_request_invalid_depth():
 
 # ── SourceMetadata ─────────────────────────────────────────────────────────────
 
+
 def test_source_metadata_defaults():
     src = SourceMetadata(title="Test Paper")
     assert src.source_type == "web"
@@ -62,6 +66,7 @@ def test_arxiv_source_fields():
 
 
 # ── ResearchStatus ─────────────────────────────────────────────────────────────
+
 
 def test_research_status_instantiation():
     """Directly instantiate ResearchStatus to ensure all fields are covered."""
@@ -100,6 +105,7 @@ def test_research_status_invalid_status():
 
 # ── ResearchResponse ──────────────────────────────────────────────────────────
 
+
 def test_research_response():
     resp = ResearchResponse(
         job_id="job-456",
@@ -123,8 +129,10 @@ def test_research_response_invalid_status():
 
 # ── ReportResponse ─────────────────────────────────────────────────────────────
 
+
 def test_report_response():
     from datetime import datetime
+
     resp = ReportResponse(
         job_id="job-789",
         report_markdown="# Report\n\nFindings here.",
@@ -132,11 +140,12 @@ def test_report_response():
     )
     assert resp.job_id == "job-789"
     assert "Report" in resp.report_markdown
-    assert resp.langgraph_version == "0.2.0"
+    assert resp.langgraph_version == version("langgraph")
 
 
 def test_report_response_with_sources():
     from datetime import datetime
+
     src = SourceMetadata(title="Test Source", url="https://example.com")
     resp = ReportResponse(
         job_id="job-789",
@@ -148,6 +157,7 @@ def test_report_response_with_sources():
 
 
 # ── HealthResponse ─────────────────────────────────────────────────────────────
+
 
 def test_health_response():
     resp = HealthResponse(

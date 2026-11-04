@@ -1,4 +1,5 @@
 """Multi-source tool definitions for scientific research and verification."""
+
 from __future__ import annotations
 import asyncio
 import re
@@ -18,7 +19,11 @@ def _sanitize_html(raw: str) -> str:
     text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
     # Neutralize prompt injection directives in untrusted retrieved documents
-    text = re.sub(r"(?i)(ignore\s+(all\s+)?previous\s+instructions|system\s+prompt\s*:|you\s+must\s+now\s+act\s+as)", "[UNTRUSTED_INSTRUCTION_FILTERED]", text)
+    text = re.sub(
+        r"(?i)(ignore\s+(all\s+)?previous\s+instructions|system\s+prompt\s*:|you\s+must\s+now\s+act\s+as)",
+        "[UNTRUSTED_INSTRUCTION_FILTERED]",
+        text,
+    )
     text = re.sub(r"\s+", " ", text).strip()
     return text[:10_000]
 
@@ -30,7 +35,9 @@ async def crossref_search(query: str, max_results: int = 8) -> list[dict]:
     No API key required.
     """
     try:
-        async with httpx.AsyncClient(headers={"User-Agent": "Noevra/2.0 (https://github.com/gege010/Multi-Agent-Research-Assistant)"}) as client:
+        async with httpx.AsyncClient(
+            headers={"User-Agent": "Noevra/2.0 (https://github.com/gege010/Noevra)"}
+        ) as client:
             resp = await client.get(
                 "https://api.crossref.org/works",
                 params={"query": query, "rows": min(max_results, 15), "sort": "relevance"},
@@ -64,25 +71,31 @@ async def crossref_search(query: str, max_results: int = 8) -> list[dict]:
 
                 doi = item.get("DOI", "")
                 url = item.get("URL", f"https://doi.org/{doi}" if doi else "")
-                journal = item.get("container-title", [""])[0] if item.get("container-title") else ""
+                journal = (
+                    item.get("container-title", [""])[0] if item.get("container-title") else ""
+                )
                 abstract = item.get("abstract", "")
                 if abstract:
                     abstract = re.sub(r"<[^>]+>", "", abstract).strip()
 
-                snippet = abstract[:500] if abstract else f"Published in {journal} ({year}). DOI: {doi}"
+                snippet = (
+                    abstract[:500] if abstract else f"Published in {journal} ({year}). DOI: {doi}"
+                )
 
-                results.append({
-                    "title": title,
-                    "snippet": snippet,
-                    "url": url,
-                    "doi": doi,
-                    "authors": authors[:5],
-                    "published_date": year,
-                    "journal": journal,
-                    "citation_count": item.get("is-referenced-by-count", 0),
-                    "source_type": "journal",
-                    "relevance_score": 0.85,
-                })
+                results.append(
+                    {
+                        "title": title,
+                        "snippet": snippet,
+                        "url": url,
+                        "doi": doi,
+                        "authors": authors[:5],
+                        "published_date": year,
+                        "journal": journal,
+                        "citation_count": item.get("is-referenced-by-count", 0),
+                        "source_type": "journal",
+                        "relevance_score": 0.85,
+                    }
+                )
             logger.info("crossref_search_done", query=query, results_count=len(results))
             return results
     except Exception as exc:
@@ -101,7 +114,12 @@ async def pubmed_search(query: str, max_results: int = 6) -> list[dict]:
             esearch_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
             resp = await client.get(
                 esearch_url,
-                params={"db": "pubmed", "term": query, "retmode": "json", "retmax": min(max_results, 10)},
+                params={
+                    "db": "pubmed",
+                    "term": query,
+                    "retmode": "json",
+                    "retmax": min(max_results, 10),
+                },
                 timeout=15.0,
             )
             if resp.status_code != 200:
@@ -138,18 +156,20 @@ async def pubmed_search(query: str, max_results: int = 6) -> list[dict]:
                         break
 
                 url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
-                results.append({
-                    "title": title,
-                    "snippet": f"PubMed Study (PMID: {pmid}). Journal: {source} ({pubdate}).",
-                    "url": url,
-                    "pmid": pmid,
-                    "doi": doi,
-                    "authors": authors[:5],
-                    "published_date": pubdate[:4],
-                    "journal": source,
-                    "source_type": "pubmed",
-                    "relevance_score": 0.9,
-                })
+                results.append(
+                    {
+                        "title": title,
+                        "snippet": f"PubMed Study (PMID: {pmid}). Journal: {source} ({pubdate}).",
+                        "url": url,
+                        "pmid": pmid,
+                        "doi": doi,
+                        "authors": authors[:5],
+                        "published_date": pubdate[:4],
+                        "journal": source,
+                        "source_type": "pubmed",
+                        "relevance_score": 0.9,
+                    }
+                )
             logger.info("pubmed_search_done", query=query, results_count=len(results))
             return results
     except Exception as exc:
@@ -168,16 +188,18 @@ def _parse_arxiv_atom(xml_text: str) -> list[dict]:
         link = re.search(r"<id>(.*?)</id>", entry)
         published = re.search(r"<published>(.*?)</published>", entry)
         arxiv_id_match = re.search(r"arxiv.org/abs/([^\s]+)", entry)
-        results.append({
-            "title": (title.group(1).strip().replace("\n", " ") if title else "Unknown"),
-            "snippet": (summary.group(1).strip().replace("\n", " ") if summary else "")[:600],
-            "url": link.group(1).strip() if link else "",
-            "arxiv_id": arxiv_id_match.group(1) if arxiv_id_match else "",
-            "authors": [a.strip() for a in authors],
-            "published_date": (published.group(1)[:10] if published else ""),
-            "source_type": "arxiv",
-            "relevance_score": 0.8,
-        })
+        results.append(
+            {
+                "title": (title.group(1).strip().replace("\n", " ") if title else "Unknown"),
+                "snippet": (summary.group(1).strip().replace("\n", " ") if summary else "")[:600],
+                "url": link.group(1).strip() if link else "",
+                "arxiv_id": arxiv_id_match.group(1) if arxiv_id_match else "",
+                "authors": [a.strip() for a in authors],
+                "published_date": (published.group(1)[:10] if published else ""),
+                "source_type": "arxiv",
+                "relevance_score": 0.8,
+            }
+        )
     return results
 
 
@@ -188,14 +210,16 @@ async def arxiv_search(query: str, max_results: int = 8) -> list[dict]:
     await asyncio.sleep(1.0)
     try:
         async with httpx.AsyncClient() as client:
-            search_url = (
-                f"https://export.arxiv.org/api/query"
-                f"?search_query=all:{query}"
-                f"&start=0"
-                f"&max_results={min(max_results, 30)}"
-                f"&sortBy=relevance"
+            resp = await client.get(
+                "https://export.arxiv.org/api/query",
+                params={
+                    "search_query": f"all:{query}",
+                    "start": 0,
+                    "max_results": min(max_results, 30),
+                    "sortBy": "relevance",
+                },
+                timeout=25.0,
             )
-            resp = await client.get(search_url, timeout=25.0)
             if resp.status_code != 200:
                 raise ArxivAPIError(f"ArXiv API error: {resp.status_code}")
             results = _parse_arxiv_atom(resp.text)
@@ -270,13 +294,15 @@ async def open_web_search(query: str, max_results: int = 6) -> list[dict]:
                     title = item.get("title", "")
                     clean_snippet = re.sub(r"<[^>]+>", "", item.get("snippet", ""))
                     page_id = item.get("pageid", "")
-                    results.append({
-                        "title": f"Wikipedia: {title}",
-                        "snippet": clean_snippet,
-                        "url": f"https://en.wikipedia.org/?curid={page_id}",
-                        "source_type": "encyclopedia",
-                        "relevance_score": 0.65,
-                    })
+                    results.append(
+                        {
+                            "title": f"Wikipedia: {title}",
+                            "snippet": clean_snippet,
+                            "url": f"https://en.wikipedia.org/?curid={page_id}",
+                            "source_type": "encyclopedia",
+                            "relevance_score": 0.65,
+                        }
+                    )
     except Exception as exc:
         logger.warning("open_web_search_failed", query=query, error=str(exc))
     return results
@@ -287,7 +313,10 @@ async def web_fetch(url: str) -> str:
     Fetch and extract clean text from a URL using BeautifulSoup.
     """
     try:
-        async with httpx.AsyncClient(follow_redirects=True, headers={"User-Agent": "Mozilla/5.0 (Academic Research Assistant)"}) as client:
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            headers={"User-Agent": "Mozilla/5.0 (Academic Research Assistant)"},
+        ) as client:
             resp = await client.get(url, timeout=20.0)
             if resp.status_code in (403, 404):
                 return ""

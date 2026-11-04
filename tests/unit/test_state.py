@@ -1,4 +1,5 @@
 """Unit tests for agent state."""
+
 from src.agents.state import default_state
 
 
@@ -31,10 +32,24 @@ def test_default_state_factory():
 def test_agent_state_keys():
     state = default_state(query="Test", job_id="j1")
     required_keys = {
-        "query", "depth", "language", "include_academic", "include_web",
-        "max_iterations", "current_iteration", "next_node",
-        "plan", "sources", "draft", "review_score", "revision_count",
-        "gap_analysis", "status", "trace_url", "error", "job_id",
+        "query",
+        "depth",
+        "language",
+        "include_academic",
+        "include_web",
+        "max_iterations",
+        "current_iteration",
+        "next_node",
+        "plan",
+        "sources",
+        "draft",
+        "review_score",
+        "revision_count",
+        "gap_analysis",
+        "status",
+        "trace_url",
+        "error",
+        "job_id",
     }
     assert required_keys.issubset(set(state.keys()))
     # Verify new multi-provider & empirical verification keys

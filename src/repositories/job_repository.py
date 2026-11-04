@@ -1,4 +1,5 @@
 """Job repository for database operations."""
+
 from __future__ import annotations
 from datetime import datetime
 from typing import Sequence, Any
@@ -40,11 +41,19 @@ class JobRepository:
         return job
 
     async def get(self, job_id: str) -> ResearchJob | None:
-        result = await self._db.execute(select(ResearchJob).where(ResearchJob.id == job_id).execution_options(populate_existing=True))
+        result = await self._db.execute(
+            select(ResearchJob)
+            .where(ResearchJob.id == job_id)
+            .execution_options(populate_existing=True)
+        )
         return result.scalar_one_or_none()
 
     async def update_status(self, job_id: str, status: str) -> None:
-        await self._db.execute(update(ResearchJob).where(ResearchJob.id == job_id).values(status=status))
+        await self._db.execute(
+            update(ResearchJob)
+            .where(ResearchJob.id == job_id, ResearchJob.status.not_in(["done", "failed"]))
+            .values(status=status)
+        )
         await self._db.commit()
 
     async def update_result(
@@ -55,7 +64,7 @@ class JobRepository:
         evidence_json: list[dict] | None = None,
         step_logs_json: list[dict] | None = None,
         trace_url: str | None = None,
-    ) -> None:
+    ) -> bool:
         values: dict[str, Any] = {
             "status": "done",
             "report_markdown": report_markdown,
@@ -69,14 +78,28 @@ class JobRepository:
         if trace_url is not None:
             values["trace_url"] = trace_url
 
-        await self._db.execute(
-            update(ResearchJob).where(ResearchJob.id == job_id, ResearchJob.status != "failed").values(**values)
+        result = await self._db.execute(
+            update(ResearchJob)
+            .where(ResearchJob.id == job_id, ResearchJob.status.not_in(["done", "failed"]))
+            .values(**values)
         )
         await self._db.commit()
+        return bool(result.rowcount)
+
+    async def cancel(self, job_id: str) -> bool:
+        result = await self._db.execute(
+            update(ResearchJob)
+            .where(ResearchJob.id == job_id, ResearchJob.status.not_in(["done", "failed"]))
+            .values(status="failed", error="Cancelled by user", completed_at=datetime.utcnow())
+        )
+        await self._db.commit()
+        return bool(result.rowcount)
 
     async def update_error(self, job_id: str, error_message: str) -> None:
         await self._db.execute(
-            update(ResearchJob).where(ResearchJob.id == job_id).values(status="failed", error=error_message)
+            update(ResearchJob)
+            .where(ResearchJob.id == job_id)
+            .values(status="failed", error=error_message)
         )
         await self._db.commit()
 
@@ -87,6 +110,12 @@ class JobRepository:
         return result.scalars().all()
 
     async def recover_interrupted(self):
-        await self._db.execute(update(ResearchJob).where(ResearchJob.status.not_in(["done", "failed"])).values(
-            status="failed", error="The server restarted before this research completed. Reconnect your provider and start a new investigation."))
+        await self._db.execute(
+            update(ResearchJob)
+            .where(ResearchJob.status.not_in(["done", "failed"]))
+            .values(
+                status="failed",
+                error="The server restarted before this research completed. Reconnect your provider and start a new investigation.",
+            )
+        )
         await self._db.commit()

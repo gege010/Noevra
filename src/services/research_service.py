@@ -1,4 +1,5 @@
 """Research orchestration service with real-time event streaming."""
+
 from __future__ import annotations
 import asyncio
 from typing import Any
@@ -61,12 +62,14 @@ class ResearchService:
     async def list_recent(self, limit: int = 25):
         return await self._repo.list_recent(limit=limit)
 
-    async def cancel_job(self, job_id: str) -> None:
+    async def cancel_job(self, job_id: str) -> bool:
         from src.services.job_runtime import runtime
+
+        if not await self._repo.cancel(job_id):
+            return False
         runtime.cancel(job_id)
-        await self._repo.update_status(job_id, "failed")
-        await self._repo.update_error(job_id, "Cancelled by user")
-        await broadcast_event(job_id, {"type": "error", "message": "Cancelled by user"})
+        await broadcast_event(job_id, {"type": "error", "error": "Cancelled by user"})
+        return True
 
     async def run_research(
         self,
@@ -91,19 +94,32 @@ class ResearchService:
             logger.error("job_not_found", job_id=job_id)
             return
 
-        logger.info("research_started", job_id=job_id, query=job.query, provider=provider, model=model)
-        await broadcast_event(job_id, {
-            "type": "start",
-            "job_id": job_id,
-            "query": job.query,
-            "provider": provider,
-            "model": model,
-            "depth": depth,
-        })
+        logger.info(
+            "research_started", job_id=job_id, query=job.query, provider=provider, model=model
+        )
+        await broadcast_event(
+            job_id,
+            {
+                "type": "start",
+                "job_id": job_id,
+                "query": job.query,
+                "provider": provider,
+                "model": model,
+                "depth": depth,
+            },
+        )
 
         try:
             await self._repo.update_status(job_id, "planning")
-            await broadcast_event(job_id, {"type": "status", "status": "planning", "pct": 10, "step": "Formulating scientific search vectors"})
+            await broadcast_event(
+                job_id,
+                {
+                    "type": "status",
+                    "status": "planning",
+                    "pct": 10,
+                    "step": "Formulating scientific search vectors",
+                },
+            )
 
             state = default_state(
                 query=job.query,
@@ -124,12 +140,15 @@ class ResearchService:
             )
 
             from src.agents.supervisor import get_supervisor_graph
+
             graph = get_supervisor_graph()
 
             # Execute graph nodes with progress broadcasting
             async def run_graph():
                 current_state = state
-                async for output in graph.astream(current_state, config={"recursion_limit": max_iterations * 4 + 5}):
+                async for output in graph.astream(
+                    current_state, config={"recursion_limit": max_iterations * 4 + 5}
+                ):
                     for node_name, node_output in output.items():
                         logger.info("node_executed", node=node_name, job_id=job_id)
                         progress_map = {
@@ -139,28 +158,43 @@ class ResearchService:
                             "writer": (90, "Scholarly monograph synthesized", "reviewing"),
                             "reviewer": (95, "Peer review critique completed", "reviewing"),
                         }
-                        pct, desc, next_status = progress_map.get(node_name, (50, f"Completed {node_name}", "working"))
-                        await self._repo.update_status(job_id, ("researching" if node_output.get("status") == "researching" else next_status))
-                        
+                        pct, desc, next_status = progress_map.get(
+                            node_name, (50, f"Completed {node_name}", "working")
+                        )
+                        await self._repo.update_status(
+                            job_id,
+                            (
+                                "researching"
+                                if node_output.get("status") == "researching"
+                                else next_status
+                            ),
+                        )
+
                         # Extract latest step log from output
                         logs = node_output.get("step_logs", [])
                         latest_log = logs[-1] if logs else {}
-                        
-                        await broadcast_event(job_id, {
-                            "type": "node_complete",
-                            "node": node_name,
-                            "pct": pct,
-                            "step": desc,
-                            "log": latest_log,
-                            "sources_count": len(node_output.get("sources", [])),
-                        })
+
+                        await broadcast_event(
+                            job_id,
+                            {
+                                "type": "node_complete",
+                                "node": node_name,
+                                "pct": pct,
+                                "step": desc,
+                                "log": latest_log,
+                                "sources_count": len(node_output.get("sources", [])),
+                            },
+                        )
                         current_state.update(node_output)
                 return current_state
 
             from langsmith import tracing_context
+
             # Tab-supplied secrets must never be serialized into graph traces.
             with tracing_context(enabled=settings.langsmith_tracing and not bool(api_key)):
-                final_state = await asyncio.wait_for(run_graph(), timeout=settings.research_timeout_seconds)
+                final_state = await asyncio.wait_for(
+                    run_graph(), timeout=settings.research_timeout_seconds
+                )
 
             draft = final_state.get("draft", "")
             raw_sources = final_state.get("sources", [])
@@ -174,7 +208,7 @@ class ResearchService:
 
             trace_url = final_state.get("trace_url")
 
-            await self._repo.update_result(
+            stored = await self._repo.update_result(
                 job_id=job_id,
                 report_markdown=draft,
                 sources_json=sources_json,
@@ -183,26 +217,44 @@ class ResearchService:
                 trace_url=trace_url,
             )
 
-            await broadcast_event(job_id, {
-                "type": "done",
-                "job_id": job_id,
-                "status": "done",
-                "pct": 100,
-                "step": "Academic Research Monograph Ready",
-                "draft": draft,
-                "sources": sources_json,
-                "evidence_matrix": evidence_matrix,
-                "step_logs": step_logs,
-            })
+            if not stored:
+                return
 
-            logger.info("research_completed_successfully", job_id=job_id, words=len(draft.split()), sources=len(sources_json))
+            await broadcast_event(
+                job_id,
+                {
+                    "type": "done",
+                    "job_id": job_id,
+                    "status": "done",
+                    "pct": 100,
+                    "step": "Academic Research Monograph Ready",
+                    "draft": draft,
+                    "sources": sources_json,
+                    "evidence_matrix": evidence_matrix,
+                    "step_logs": step_logs,
+                },
+            )
+
+            logger.info(
+                "research_completed_successfully",
+                job_id=job_id,
+                words=len(draft.split()),
+                sources=len(sources_json),
+            )
         except Exception as exc:
             logger.error("research_pipeline_failed", job_id=job_id, error_type=type(exc).__name__)
-            message = "Research exceeded its time budget. Try a smaller scope." if isinstance(exc, asyncio.TimeoutError) else "Research could not complete. Check the provider connection, model permissions, and source availability before retrying."
+            message = (
+                "Research exceeded its time budget. Try a smaller scope."
+                if isinstance(exc, asyncio.TimeoutError)
+                else "Research could not complete. Check the provider connection, model permissions, and source availability before retrying."
+            )
             await self._repo.update_error(job_id, message)
-            await broadcast_event(job_id, {
-                "type": "error",
-                "job_id": job_id,
-                "status": "failed",
-                "error": message,
-            })
+            await broadcast_event(
+                job_id,
+                {
+                    "type": "error",
+                    "job_id": job_id,
+                    "status": "failed",
+                    "error": message,
+                },
+            )

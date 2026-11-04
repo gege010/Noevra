@@ -1,4 +1,5 @@
 """Private, single-workspace deployment gate. Provider OAuth is separate."""
+
 from __future__ import annotations
 import hmac
 import time
@@ -18,7 +19,10 @@ class Login(BaseModel):
 @router.get("")
 async def session_status(request: Request):
     enabled = bool(get_settings().workspace_password)
-    return {"required": enabled, "authenticated": not enabled or bool(request.session.get("workspace"))}
+    return {
+        "required": enabled,
+        "authenticated": not enabled or bool(request.session.get("workspace")),
+    }
 
 
 @router.post("")

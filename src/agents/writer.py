@@ -1,4 +1,5 @@
 """Academic Writer agent node — synthesizes publication-grade research monographs."""
+
 from __future__ import annotations
 import json
 import structlog
@@ -45,7 +46,7 @@ async def writer_node(state: AgentState) -> dict:
 
     # Build reference mapping
     ref_list = []
-    for idx, s in enumerate(sources[:30]):
+    for idx, s in enumerate(sources):
         authors = s.get("authors", [])
         author_str = ", ".join(authors[:3]) + (" et al." if len(authors) > 3 else "")
         if not author_str:
@@ -54,28 +55,40 @@ async def writer_node(state: AgentState) -> dict:
         doi = s.get("doi", "")
         url = s.get("url", "")
         journal = s.get("journal") or s.get("source_type", "Research Publication")
-        ref_list.append(f"[{idx + 1}] {author_str} ({year}). \"{s.get('title')}\". *{journal}*. {f'DOI: {doi}' if doi else f'URL: {url}'}")
+        ref_list.append(
+            f'[{idx + 1}] {author_str} ({year}). "{s.get("title")}". *{journal}*. {f"DOI: {doi}" if doi else f"URL: {url}"}'
+        )
 
     formatted_refs = "\n".join(ref_list)
 
     # Word count expectations based on depth
-    word_target = "1,200 - 1,800 words" if depth == "quick" else ("4,000 - 6,500 words" if depth == "deep" else "2,500 - 4,000 words")
+    word_target = (
+        "1,200 - 1,800 words"
+        if depth == "quick"
+        else ("4,000 - 6,500 words" if depth == "deep" else "2,500 - 4,000 words")
+    )
 
     contract = state.get("contract", {})
     # Build compact token-efficient ledger representation to avoid provider TPM exhaustion
     compact_ledger = []
-    for e in evidence_matrix[:12]:
+    for e in evidence_matrix:
         ev_items = e.get("evidence", [])
-        passage = ev_items[0].get("passage", "")[:180] if ev_items else e.get("quantitative_metric", "")[:180]
-        compact_ledger.append({
-            "claim_id": e.get("claim_id"),
-            "claim": e.get("claim"),
-            "status": e.get("status", "unverified"),
-            "evidence_passage": passage,
-            "source_indices": e.get("supporting_source_indices", [1]),
-            "author_year": e.get("primary_author_year"),
-            "open_question": e.get("open_question", ""),
-        })
+        passage = (
+            ev_items[0].get("passage", "")[:180]
+            if ev_items
+            else e.get("quantitative_metric", "")[:180]
+        )
+        compact_ledger.append(
+            {
+                "claim_id": e.get("claim_id"),
+                "claim": e.get("claim"),
+                "status": e.get("status", "unverified"),
+                "evidence_passage": passage,
+                "source_indices": e.get("supporting_source_indices", []),
+                "author_year": e.get("primary_author_year"),
+                "open_question": e.get("open_question", ""),
+            }
+        )
 
     prompt = f"""Topic: "{query}"
 Depth Level: {depth.upper()} (Target Length: {word_target})
@@ -94,7 +107,7 @@ AUDIT VERDICT & CONTRADICTIONS:
 {json.dumps(verification_report, indent=2)}
 
 ---
-BIBLIOGRAPHIC REPOSITORY ({len(sources)} validated sources):
+BIBLIOGRAPHIC REPOSITORY ({len(sources)} retrieved source records; metadata is not claim verification):
 {formatted_refs}
 
 Authoring Directives (Research Machine Specification):
@@ -124,11 +137,16 @@ Authoring Directives (Research Machine Specification):
     try:
         response = await llm.ainvoke(messages)
         metadata = response.response_metadata or {}
-        if metadata.get("finish_reason") in ("length", "MAX_TOKENS") or metadata.get("stop_reason") == "max_tokens":
+        if (
+            metadata.get("finish_reason") in ("length", "MAX_TOKENS")
+            or metadata.get("stop_reason") == "max_tokens"
+        ):
             raise RuntimeError("The provider truncated the report before completion.")
         content = response.content
         if isinstance(content, list):
-            draft = " ".join([c.get("text", "") if isinstance(c, dict) else str(c) for c in content])
+            draft = " ".join(
+                [c.get("text", "") if isinstance(c, dict) else str(c) for c in content]
+            )
         else:
             draft = str(content)
     except Exception as exc:

@@ -1,4 +1,5 @@
 """Bounded, cancellable single-worker runtime; secrets are never persisted."""
+
 from __future__ import annotations
 import asyncio
 from src.config import get_settings
@@ -28,6 +29,7 @@ class JobRuntime:
 
     async def _run(self, job_id: str, params: dict):
         from src.services.research_service import ResearchService, broadcast_event
+
         try:
             async with self.slots:
                 async with async_session_maker() as db:
@@ -38,12 +40,24 @@ class JobRuntime:
                     await service.run_research(job_id, **params)
         except asyncio.CancelledError:
             async with async_session_maker() as db:
-                await JobRepository(db).update_error(job_id, "Research interrupted or cancelled. Start a new investigation to retry.")
-            await broadcast_event(job_id, {"type": "error", "error": "Research cancelled or interrupted."})
+                await JobRepository(db).update_error(
+                    job_id, "Research interrupted or cancelled. Start a new investigation to retry."
+                )
+            await broadcast_event(
+                job_id, {"type": "error", "error": "Research cancelled or interrupted."}
+            )
         except Exception:
             async with async_session_maker() as db:
-                await JobRepository(db).update_error(job_id, "Research could not start. Check your connection and try again.")
-            await broadcast_event(job_id, {"type": "error", "error": "Research could not start. Check your connection and try again."})
+                await JobRepository(db).update_error(
+                    job_id, "Research could not start. Check your connection and try again."
+                )
+            await broadcast_event(
+                job_id,
+                {
+                    "type": "error",
+                    "error": "Research could not start. Check your connection and try again.",
+                },
+            )
 
     async def close(self):
         tasks = list(self.tasks.values())

@@ -1,4 +1,5 @@
 """LangGraph supervisor graph — orchestrates the 5-agent research pipeline."""
+
 from __future__ import annotations
 import structlog
 from langgraph.graph import StateGraph, END

@@ -1,10 +1,12 @@
 """Verifier agent node — Fact-checks gathered literature, builds Evidence Ledger, and detects contradictions."""
+
 from __future__ import annotations
 import json
 from datetime import date
 import structlog
 from langchain_core.messages import SystemMessage, HumanMessage
 from src.agents.state import AgentState
+from src.agents.contracts import VerificationOutput, json_object
 from src.agents.evidence import validate_claim
 from src.agents.llm_factory import create_llm
 
@@ -51,18 +53,20 @@ async def verifier_node(state: AgentState) -> dict:
     source_summaries = []
     for idx, s in enumerate(sources[:20]):
         source_id = s.get("source_id") or f"S-{idx + 1:02d}"
-        source_summaries.append({
-            "source_id": source_id,
-            "index": idx + 1,
-            "title": s.get("title", ""),
-            "authors": s.get("authors", [])[:3],
-            "year": s.get("published_date", ""),
-            "publisher": s.get("journal", s.get("source_type", "web")),
-            "doi": s.get("doi", ""),
-            "url": s.get("url", ""),
-            "source_type": s.get("source_type", "web"),
-            "passage": (s.get("passage") or s.get("snippet", ""))[:600],
-        })
+        source_summaries.append(
+            {
+                "source_id": source_id,
+                "index": idx + 1,
+                "title": s.get("title", ""),
+                "authors": s.get("authors", [])[:3],
+                "year": s.get("published_date", ""),
+                "publisher": s.get("journal", s.get("source_type", "web")),
+                "doi": s.get("doi", ""),
+                "url": s.get("url", ""),
+                "source_type": s.get("source_type", "web"),
+                "passage": (s.get("passage") or s.get("snippet", ""))[:600],
+            }
+        )
 
     llm = create_llm(
         provider=state.get("provider"),
@@ -73,9 +77,9 @@ async def verifier_node(state: AgentState) -> dict:
         temperature=0.1,
     )
 
-    prompt = f"""Research Query: "{state['query']}"
+    prompt = f"""Research Query: "{state["query"]}"
 Investigation Date (as_of): {current_date}
-Language: {state.get('language', 'en')}
+Language: {state.get("language", "en")}
 
 Analyze the following retrieved sources and compile a rigorous Evidence Ledger:
 {json.dumps(source_summaries, indent=2)}
@@ -135,19 +139,9 @@ Return ONLY valid JSON matching this schema:
 
     try:
         response = await llm.ainvoke(messages)
-        content = response.content
-        if isinstance(content, list):
-            content = " ".join([c.get("text", "") if isinstance(c, dict) else str(c) for c in content])
-        
-        json_str = content
-        if "```json" in content:
-            json_str = content.split("```json")[1].split("```")[0].strip()
-        elif "```" in content:
-            json_str = content.split("```")[1].split("```")[0].strip()
+        parsed = VerificationOutput.model_validate(json_object(response.content)).model_dump()
+        raw_ledger = parsed["evidence_ledger"]
 
-        parsed = json.loads(json_str)
-        raw_ledger = parsed.get("evidence_ledger", parsed.get("evidence_matrix", []))
-        
         for idx, item in enumerate(raw_ledger):
             if not isinstance(item, dict):
                 continue
@@ -160,7 +154,7 @@ Return ONLY valid JSON matching this schema:
                 item["last_checked"] = current_date
             if "open_question" not in item:
                 item["open_question"] = ""
-            
+
             # Categorize unverified / contested
             if item.get("status") == "unverified":
                 unverified_claims.append(item)
@@ -173,6 +167,8 @@ Return ONLY valid JSON matching this schema:
         verification_report = {
             "credibility_overview": parsed.get("credibility_overview", {}),
             "cross_study_contradictions": contradictions,
+            "sources_reviewed": len(source_summaries),
+            "sources_retrieved": len(sources),
             "verified_claims_count": sum(e.get("status") == "supported" for e in evidence_matrix),
             "supported_count": sum(1 for e in evidence_matrix if e.get("status") == "supported"),
             "contested_count": len(contested_claims),
@@ -180,11 +176,20 @@ Return ONLY valid JSON matching this schema:
         }
     except Exception as e:
         logger.error("verifier_analysis_failed", error_type=type(e).__name__)
-        # Build programmatic Evidence Ledger fallback from available sources
+        evidence_matrix, unverified_claims, contested_claims = [], [], []
+        # Build explicitly unverified records; a partial failed parse is discarded.
         for idx, s in enumerate(sources[:8]):
-            tier = 1 if s.get("source_type") in ("journal", "pubmed") else (2 if s.get("source_type") == "arxiv" else 3)
+            tier = (
+                1
+                if s.get("source_type") in ("journal", "pubmed")
+                else (2 if s.get("source_type") == "arxiv" else 3)
+            )
             authors = s.get("authors", [])
-            auth_str = (authors[0] + " et al.") if len(authors) > 1 else (authors[0] if authors else "Researchers")
+            auth_str = (
+                (authors[0] + " et al.")
+                if len(authors) > 1
+                else (authors[0] if authors else "Researchers")
+            )
             year = s.get("published_date", "2024")
             src_id = s.get("source_id") or f"S-{idx + 1:02d}"
             passage = (s.get("passage") or s.get("snippet", ""))[:500]
@@ -219,12 +224,20 @@ Return ONLY valid JSON matching this schema:
 
         verification_report = {
             "credibility_overview": {
-                "tier_1_peer_reviewed_count": sum(1 for s in sources if s.get("source_type") in ("journal", "pubmed")),
-                "tier_2_preprints_count": sum(1 for s in sources if s.get("source_type") == "arxiv"),
-                "tier_3_institutional_count": sum(1 for s in sources if s.get("source_type") not in ("journal", "pubmed", "arxiv")),
+                "tier_1_peer_reviewed_count": sum(
+                    1 for s in sources if s.get("source_type") in ("journal", "pubmed")
+                ),
+                "tier_2_preprints_count": sum(
+                    1 for s in sources if s.get("source_type") == "arxiv"
+                ),
+                "tier_3_institutional_count": sum(
+                    1 for s in sources if s.get("source_type") not in ("journal", "pubmed", "arxiv")
+                ),
                 "verification_verdict": "Verification unavailable; all fallback claims remain unverified",
             },
             "cross_study_contradictions": [],
+            "sources_reviewed": len(source_summaries),
+            "sources_retrieved": len(sources),
             "verified_claims_count": sum(e.get("status") == "supported" for e in evidence_matrix),
             "supported_count": 0,
             "contested_count": 0,
@@ -233,8 +246,8 @@ Return ONLY valid JSON matching this schema:
 
     step_log = {
         "node": "verifier",
-        "title": "Evidence Ledger Compiled & Fact-Checking Complete",
-        "detail": f"Audited {len(sources)} sources. Compiled Evidence Ledger with {len(evidence_matrix)} verified claims ({verification_report.get('supported_count', 0)} supported, {len(contested_claims)} contested, {len(unverified_claims)} unverified).",
+        "title": "Evidence ledger compiled",
+        "detail": f"Presented {len(source_summaries)} of {len(sources)} retrieved sources for automated review. Recorded {len(evidence_matrix)} claims ({verification_report.get('supported_count', 0)} supported, {len(contested_claims)} contested, {len(unverified_claims)} unverified).",
         "credibility": verification_report.get("credibility_overview", {}),
         "evidence_preview": evidence_matrix[:3],
     }

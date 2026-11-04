@@ -1,4 +1,5 @@
 """SQLAlchemy ORM models."""
+
 from __future__ import annotations
 import uuid
 from datetime import datetime
@@ -9,12 +10,15 @@ from src.db.database import Base
 
 class ResearchJob(Base):
     """Tracks an autonomous research job through its lifecycle."""
+
     __tablename__ = "research_jobs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     query: Mapped[str] = mapped_column(Text, nullable=False)
     provider: Mapped[str] = mapped_column(String(50), nullable=True, default="groq")
-    model: Mapped[str] = mapped_column(String(100), nullable=True, default="llama-3.3-70b-versatile")
+    model: Mapped[str] = mapped_column(
+        String(100), nullable=True, default="llama-3.3-70b-versatile"
+    )
     depth: Mapped[str] = mapped_column(String(20), nullable=True, default="standard")
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="queued")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

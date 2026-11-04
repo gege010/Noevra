@@ -23,7 +23,10 @@ def test_pkce_exchange_returns_non_cached_key_and_fixed_upstream():
     response.json.return_value = {"key": "sk-or-test-only"}
     context, transport = exchange(response)
     with patch("src.api.v1.auth.httpx.AsyncClient", return_value=context):
-        result = client.post("/api/v1/auth/openrouter/exchange", json={"code": "test-code", "code_verifier": "v" * 64})
+        result = client.post(
+            "/api/v1/auth/openrouter/exchange",
+            json={"code": "test-code", "code_verifier": "v" * 64},
+        )
     assert result.status_code == 200
     assert result.headers["cache-control"] == "no-store"
     assert result.json() == {"key": "sk-or-test-only"}
@@ -35,7 +38,9 @@ def test_pkce_exchange_returns_non_cached_key_and_fixed_upstream():
 @pytest.mark.parametrize("verifier", ["short", "!" * 64, "a" * 129])
 def test_rejects_invalid_verifiers_without_upstream_request(verifier):
     with patch("src.api.v1.auth.httpx.AsyncClient") as upstream:
-        response = client.post("/api/v1/auth/openrouter/exchange", json={"code": "test", "code_verifier": verifier})
+        response = client.post(
+            "/api/v1/auth/openrouter/exchange", json={"code": "test", "code_verifier": verifier}
+        )
     assert response.status_code == 422
     upstream.assert_not_called()
 
@@ -46,7 +51,9 @@ def test_invalid_upstream_response_is_recoverable(payload):
     response.json.return_value = payload
     context, _ = exchange(response)
     with patch("src.api.v1.auth.httpx.AsyncClient", return_value=context):
-        result = client.post("/api/v1/auth/openrouter/exchange", json={"code": "test", "code_verifier": "v" * 64})
+        result = client.post(
+            "/api/v1/auth/openrouter/exchange", json={"code": "test", "code_verifier": "v" * 64}
+        )
     assert result.status_code == 502
 
 
@@ -54,7 +61,9 @@ def test_provider_errors_never_expose_upstream_secrets():
     response = MagicMock(status_code=403, text="secret-from-upstream")
     context, _ = exchange(response)
     with patch("src.api.v1.auth.httpx.AsyncClient", return_value=context):
-        result = client.post("/api/v1/auth/openrouter/exchange", json={"code": "test", "code_verifier": "v" * 64})
+        result = client.post(
+            "/api/v1/auth/openrouter/exchange", json={"code": "test", "code_verifier": "v" * 64}
+        )
     assert result.status_code == 400
     assert "secret-from-upstream" not in result.text
 
@@ -62,6 +71,8 @@ def test_provider_errors_never_expose_upstream_secrets():
 def test_network_failure_is_recoverable():
     context, _ = exchange(error=httpx.ConnectError("private-network-details"))
     with patch("src.api.v1.auth.httpx.AsyncClient", return_value=context):
-        result = client.post("/api/v1/auth/openrouter/exchange", json={"code": "test", "code_verifier": "v" * 64})
+        result = client.post(
+            "/api/v1/auth/openrouter/exchange", json={"code": "test", "code_verifier": "v" * 64}
+        )
     assert result.status_code == 502
     assert "private-network-details" not in result.text

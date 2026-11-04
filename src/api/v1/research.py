@@ -1,4 +1,5 @@
 """Research job endpoints with real-time SSE streaming and multi-provider selection."""
+
 from __future__ import annotations
 import asyncio
 import json
@@ -6,7 +7,8 @@ import uuid
 from datetime import datetime
 from typing import AsyncGenerator
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import Response, PlainTextResponse
+from urllib.parse import quote
 from sse_starlette.sse import EventSourceResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,12 +17,10 @@ from src.schemas.requests import ResearchRequest
 from src.schemas.responses import ResearchResponse, ResearchStatus, ReportResponse
 from src.services.research_service import ResearchService, register_listener, unregister_listener
 from src.repositories.job_repository import JobRepository
-from src.services.provider_service import provider_metadata
+from src.services.provider_service import provider_metadata, configured_key, validate_endpoint
 from src.config import get_settings
 
 router = APIRouter(prefix="/research", tags=["research"])
-
-REPORTS_DIR = get_settings().data_dir / "reports"
 
 
 @router.get("/providers", summary="Get all available LLM providers and models")
@@ -35,11 +35,31 @@ async def start_research(
     db: AsyncSession = Depends(get_db),
 ) -> ResearchResponse:
     from src.services.job_runtime import runtime
+
+    if request.auth_type == "oauth" and not request.api_key:
+        raise HTTPException(422, "Reconnect this provider account before starting research.")
+    if request.provider not in ("ollama", "custom") and not (
+        request.api_key or configured_key(request.provider)
+    ):
+        raise HTTPException(
+            422, "Connect a model provider in Settings > Connections before starting research."
+        )
+    if request.provider in ("ollama", "custom"):
+        validate_endpoint(
+            request.base_url
+            or (
+                get_settings().ollama_base_url
+                if request.provider == "ollama"
+                else "http://localhost:1234/v1"
+            )
+        )
     job_id = str(uuid.uuid4())
     service = ResearchService(db)
     async with runtime.admission:
         if runtime.full:
-            raise HTTPException(429, "The research queue is full. Wait for a running job to finish.")
+            raise HTTPException(
+                429, "The research queue is full. Wait for a running job to finish."
+            )
         await service.create_job(
             job_id=job_id,
             query=request.query,
@@ -94,24 +114,26 @@ async def stream_job_telemetry(job_id: str, db: AsyncSession = Depends(get_db)):
             if job.status == "done":
                 yield {
                     "event": "done",
-                    "data": json.dumps({
-                        "type": "done",
-                        "job_id": job.id,
-                        "status": "done",
-                        "pct": 100,
-                        "step": "Academic Research Monograph Ready",
-                        "draft": job.report_markdown,
-                        "sources": job.sources_json or [],
-                        "evidence_matrix": job.evidence_json or [],
-                        "step_logs": job.step_logs_json or [],
-                    })
+                    "data": json.dumps(
+                        {
+                            "type": "done",
+                            "job_id": job.id,
+                            "status": "done",
+                            "pct": 100,
+                            "step": "Academic Research Monograph Ready",
+                            "draft": job.report_markdown,
+                            "sources": job.sources_json or [],
+                            "evidence_matrix": job.evidence_json or [],
+                            "step_logs": job.step_logs_json or [],
+                        }
+                    ),
                 }
                 return
 
             if job.status == "failed":
                 yield {
                     "event": "error",
-                    "data": json.dumps({"type": "error", "error": job.error or "Unknown failure"})
+                    "data": json.dumps({"type": "error", "error": job.error or "Unknown failure"}),
                 }
                 return
 
@@ -128,7 +150,16 @@ async def stream_job_telemetry(job_id: str, db: AsyncSession = Depends(get_db)):
                 except asyncio.TimeoutError:
                     latest = await service.get_job(job_id)
                     if latest and latest.status in ("done", "failed"):
-                        yield {"event": "done" if latest.status == "done" else "error", "data": json.dumps({"type": "done" if latest.status == "done" else "error", "job_id": job_id, "error": latest.error})}
+                        yield {
+                            "event": "done" if latest.status == "done" else "error",
+                            "data": json.dumps(
+                                {
+                                    "type": "done" if latest.status == "done" else "error",
+                                    "job_id": job_id,
+                                    "error": latest.error,
+                                }
+                            ),
+                        }
                         break
                     # Keep-alive heartbeat
                     yield {"event": "ping", "data": json.dumps({"type": "ping"})}
@@ -201,7 +232,7 @@ async def export_bibtex(job_id: str, db: AsyncSession = Depends(get_db)) -> Plai
     job = await service.get_job(job_id)
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
-    
+
     sources = job.sources_json or []
     bibtex_entries = []
     for idx, s in enumerate(sources):
@@ -212,7 +243,7 @@ async def export_bibtex(job_id: str, db: AsyncSession = Depends(get_db)) -> Plai
         doi = s.get("doi", "")
         journal = s.get("journal", "")
         url = s.get("url", "")
-        
+
         entry = [
             f"@article{{{key},",
             f"  title = {{{{{title}}}}},",
@@ -229,14 +260,16 @@ async def export_bibtex(job_id: str, db: AsyncSession = Depends(get_db)) -> Plai
         bibtex_entries.append("\n".join(entry))
 
     return PlainTextResponse(
-        content="\n".join(bibtex_entries) if bibtex_entries else "% No bibliographic records found.",
+        content="\n".join(bibtex_entries)
+        if bibtex_entries
+        else "% No bibliographic records found.",
         media_type="application/x-bibtex",
-        headers={"Content-Disposition": f'attachment; filename="references_{job_id[:8]}.bib"'}
+        headers={"Content-Disposition": f'attachment; filename="references_{job_id[:8]}.bib"'},
     )
 
 
 @router.get("/{job_id}/report/download", summary="Download report as Markdown file")
-async def download_markdown(job_id: str, db: AsyncSession = Depends(get_db)) -> FileResponse:
+async def download_markdown(job_id: str, db: AsyncSession = Depends(get_db)) -> Response:
     service = ResearchService(db)
     job = await service.get_job(job_id)
     if not job:
@@ -247,19 +280,15 @@ async def download_markdown(job_id: str, db: AsyncSession = Depends(get_db)) -> 
     markdown = job.report_markdown or ""
     safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in job.query)[:50]
     filename = f"{job_id[:8]}_{safe_title}.md"
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    filepath = REPORTS_DIR / filename
-    filepath.write_text(markdown, encoding="utf-8")
-
-    return FileResponse(
-        path=str(filepath),
-        filename=filename,
-        media_type="text/markdown",
+    return Response(
+        content=markdown.encode("utf-8"),
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
     )
 
 
 @router.get("/{job_id}/report/pdf", summary="Download report as PDF file")
-async def download_pdf(job_id: str, db: AsyncSession = Depends(get_db)) -> FileResponse:
+async def download_pdf(job_id: str, db: AsyncSession = Depends(get_db)) -> Response:
     service = ResearchService(db)
     job = await service.get_job(job_id)
     if not job:
@@ -270,24 +299,21 @@ async def download_pdf(job_id: str, db: AsyncSession = Depends(get_db)) -> FileR
     markdown = job.report_markdown or ""
     safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in job.query)[:50]
     filename = f"{job_id[:8]}_{safe_title}.pdf"
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    filepath = REPORTS_DIR / filename
-
     try:
         from src.services.report_service import ReportService
+
         report_service = ReportService()
         pdf_bytes = await asyncio.to_thread(report_service.markdown_to_pdf, markdown)
-        await asyncio.to_thread(filepath.write_bytes, pdf_bytes)
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="PDF could not be generated. Download Markdown and try again.",
         )
 
-    return FileResponse(
-        path=str(filepath),
-        filename=filename,
+    return Response(
+        content=pdf_bytes,
         media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
     )
 
 
@@ -299,7 +325,8 @@ async def cancel_job(job_id: str, db: AsyncSession = Depends(get_db)) -> dict:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
     if job.is_terminal:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Job already finished")
-    await service.cancel_job(job_id)
+    if not await service.cancel_job(job_id):
+        raise HTTPException(status_code=409, detail="Job already finished")
     return {"message": "Job cancelled"}
 
 

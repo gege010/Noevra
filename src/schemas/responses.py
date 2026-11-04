@@ -1,5 +1,7 @@
 """Pydantic response schemas."""
+
 from __future__ import annotations
+from importlib.metadata import version as package_version
 from datetime import datetime
 from typing import Literal, Any
 from pydantic import BaseModel, Field
@@ -14,7 +16,9 @@ class SourceMetadata(BaseModel):
     published_date: Any = None
     journal: str | None = None
     snippet: str | None = None
-    source_type: Literal["web", "arxiv", "pubmed", "journal", "encyclopedia", "pdf", "other"] = "web"
+    source_type: Literal["web", "arxiv", "pubmed", "journal", "encyclopedia", "pdf", "other"] = (
+        "web"
+    )
     relevance_score: float = Field(ge=0.0, le=1.0, default=0.5)
 
 
@@ -25,14 +29,18 @@ class ArxivSource(SourceMetadata):
 
 class ResearchResponse(BaseModel):
     job_id: str
-    status: Literal["queued", "planning", "researching", "verifying", "writing", "reviewing", "done", "failed"]
+    status: Literal[
+        "queued", "planning", "researching", "verifying", "writing", "reviewing", "done", "failed"
+    ]
     stream_url: str
     estimated_duration: str
 
 
 class ResearchStatus(BaseModel):
     job_id: str
-    status: Literal["queued", "planning", "researching", "verifying", "writing", "reviewing", "done", "failed"]
+    status: Literal[
+        "queued", "planning", "researching", "verifying", "writing", "reviewing", "done", "failed"
+    ]
     progress_pct: int = Field(ge=0, le=100)
     current_step: str
     provider: str | None = None
@@ -58,7 +66,7 @@ class ReportResponse(BaseModel):
     generated_at: datetime
     tokens_used: int | None = None
     report_content: str | None = None  # alias for report_markdown (API compat)
-    langgraph_version: str = "0.2.0"
+    langgraph_version: str = Field(default_factory=lambda: package_version("langgraph"))
 
 
 class HealthResponse(BaseModel):
