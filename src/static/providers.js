@@ -23,9 +23,17 @@
     $("providerConnections").innerHTML = Object.entries(state.providers)
       .map(
         ([id, info]) =>
-          `<button class="provider-row" data-connect-provider="${esc(id)}"><span class="account-avatar">${esc(info.name.slice(0, 1))}</span><span><strong>${esc(info.name)}</strong><small>${esc(status(id))}</small><small class="auth-method">${info.oauth?.supported ? "OAuth + API key" : ["ollama", "custom"].includes(id) ? "Your endpoint" : "API key"}</small></span><span aria-hidden="true">→</span></button>`,
+          `<button class="provider-row" data-connect-provider="${esc(id)}"><span class="account-avatar">${esc(info.name.slice(0, 1))}</span><span><strong>${esc(info.name)}</strong><small>${esc(status(id))}</small><small class="auth-method">${info.oauth?.supported ? "OAuth + API key" : ["ollama", "custom"].includes(id) ? "Your endpoint" : "API key"}</small></span><svg class="icon" aria-hidden="true"><use href="#i-arrow" /></svg></button>`,
       )
       .join("");
+  }
+  function renderReadiness() {
+    const loading = Boolean(catalogs[state.provider]?.loading);
+    $("connectionHint").hidden = Boolean(state.model);
+    $("connectionHintText").textContent = loading
+      ? "Finding models available to your account…"
+      : "Connect a model provider to start your first investigation.";
+    $("connectWorkspaceBtn").hidden = loading;
   }
   function renderModels() {
     const catalog = catalogs[state.provider],
@@ -52,6 +60,7 @@
     $("refreshModelsBtn").disabled = Boolean(catalog?.loading);
     // Filtering is a view operation; it must not silently change the chosen model.
     if (!query && !catalog?.loading) selectModel();
+    renderReadiness();
     root.ScholarControls?.sync();
   }
   function selectModel(commitSelection = false) {
@@ -64,9 +73,10 @@
       saved.custom ||
       (catalogs[state.provider]?.loading ? "" : saved.model) ||
       "";
+    renderReadiness();
     $("composerModel").textContent = state.model
       ? shortModel(state.model)
-      : "Choose a model";
+      : "Choose model";
   }
   function selectProvider(provider) {
     if (!state.providers[provider]) return;
@@ -133,14 +143,31 @@
     }
   }
   function openConnection(provider) {
+    if (!state.providers[provider]) {
+      notify(
+        "Provider settings are unavailable. Refresh the workspace to reconnect.",
+        true,
+      );
+      return;
+    }
     editing = provider;
     for (const id of ["modelDialog", "settingsDialog"]) $(id).close();
     const info = state.providers[provider],
       saved = connection(provider);
     $("connectionTitle").textContent = info.name;
+    $("apiKeyRequirement").textContent = ["ollama", "custom"].includes(provider)
+      ? "Optional"
+      : info.configured_in_backend
+        ? "Optional override"
+        : info.oauth?.supported
+          ? "Alternative to OAuth"
+          : "Required";
     $("useProviderBtn").disabled = !catalogs[provider]?.models?.length;
     $("apiKeyInput").value = saved.auth === "oauth" ? "" : saved.key || "";
     $("apiKeyInput").type = "password";
+    $("revealKeyBtn").textContent = "Show";
+    $("revealKeyBtn").setAttribute("aria-pressed", "false");
+    $("revealKeyBtn").setAttribute("aria-label", "Show API key");
     $("baseUrlInput").value =
       saved.endpoint ||
       (provider === "ollama"
@@ -322,18 +349,41 @@
   async function unlock() {
     try {
       const response = await request("/api/v1/session");
+      $("lockWorkspaceBtn").hidden = !response.required;
       if (response.authenticated) {
+        document.body.classList.remove("workspace-locked");
         capabilities = await request("/api/v1/auth/capabilities");
         return true;
       }
-      openDialog("unlockDialog");
+      requireUnlock();
       return false;
     } catch {
       notify("Cannot reach the workspace. Refresh to retry.", true);
       return false;
     }
   }
+  function requireUnlock() {
+    stopObservation();
+    if ($("unlockDialog").open) return;
+    document
+      .querySelectorAll("dialog[open]")
+      .forEach((dialog) => dialog.close());
+    document.body.classList.add("workspace-locked");
+    openDialog("unlockDialog");
+  }
   function init() {
+    $("lockWorkspaceBtn").addEventListener("click", async () => {
+      try {
+        await request("/api/v1/session", { method: "DELETE" });
+        sessionStorage.removeItem("scholar_oauth_pending");
+        location.reload();
+      } catch (error) {
+        notify(
+          "Could not lock the workspace. Check the connection and retry.",
+          true,
+        );
+      }
+    });
     $("useProviderBtn").addEventListener("click", () => {
       $("connectionDialog").close();
       selectProvider(editing);
@@ -358,6 +408,19 @@
     $("saveProviderBtn").addEventListener("click", async () => {
       const previous = connection(editing),
         key = $("apiKeyInput").value.trim();
+      if (
+        !key &&
+        !previous.key &&
+        !state.providers[editing]?.configured_in_backend &&
+        !["ollama", "custom"].includes(editing)
+      ) {
+        $("connectionStatus").textContent = state.providers[editing]?.oauth
+          ?.supported
+          ? "Connect your account above or enter an API key, then try again."
+          : "Enter this provider's API key, then save to discover available models.";
+        $("apiKeyInput").focus();
+        return;
+      }
       state.connections[editing] = {
         ...previous,
         ...(key
@@ -395,9 +458,11 @@
         });
         $("workspacePassword").value = "";
         $("unlockDialog").close();
+        document.body.classList.remove("workspace-locked");
         await Promise.allSettled([loadProviders(), loadJobs()]);
         capabilities = await request("/api/v1/auth/capabilities");
         await handleCallback();
+        if (state.running && state.jobId) connectStream(state.jobId);
       } catch (error) {
         $("unlockError").textContent = error.message;
       }
@@ -410,5 +475,6 @@
     selectModel,
     renderConnections,
     handleCallback,
+    requireUnlock,
   };
 })(window);

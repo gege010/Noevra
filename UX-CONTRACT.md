@@ -27,4 +27,8 @@
 - In this report marks the active section on click and scroll using aria-current and a visible selected treatment.
 - Shared select popovers own keyboard navigation, typeahead, selected state, outside click, Escape/Tab, focus restoration and viewport collision. Dialog closure closes open popovers.
 - OpenRouter OAuth uses an unpredictable state, S256 challenge, a one-use verifier and a ten-minute callback window. Credentials are exchanged via a fixed upstream on the backend, returned with no-store and held only in the tab memory. Provider passwords never pass through this application.
-- Disconnect clears the tab credential; the UI links to the provider for actual key revocation. OAuth authorization and its billing approval belong to the user. Other providers retain API-key/local-endpoint authentication.
+- Disconnect clears the tab credential; the UI links to the provider for actual key revocation. OAuth authorization and its billing approval belong to the user. Other authentication methods follow the live provider metadata; unsupported subscription OAuth is not offered.
+
+- First launch opens with an empty persisted library and a direct Connect a provider route. Missing credentials are explained before work is queued.
+- API key labels distinguish required credentials, optional server overrides and OAuth alternatives. Revealing a key resets to Show when another connection is opened.
+- Locked workspace content is hidden. Locking reloads the tab to clear in-memory credentials; session expiry pauses polling and resumes observation after unlock.

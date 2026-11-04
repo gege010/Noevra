@@ -1,3 +1,5 @@
+> Historical review. The current local-first architecture and verification record are in [ENGINEERING-REVIEW.md](ENGINEERING-REVIEW.md) and [ARCHITECTURE.md](ARCHITECTURE.md). Findings below describe an earlier revision and may already be resolved.
+
 # Noevra: engineering review and refinement
 
 ## Product understanding

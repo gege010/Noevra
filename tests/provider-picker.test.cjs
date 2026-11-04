@@ -3,10 +3,13 @@ const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
 const source = fs.readFileSync('src/static/providers.js', 'utf8');
+const markup = fs.readFileSync('src/static/index.html', 'utf8');
+const ids = new Set([...markup.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
 
 function workspace(requestCatalog) {
   const elements = new Map();
   function $(id) {
+    assert.ok(ids.has(id), `Provider UI references missing HTML element: ${id}`);
     if (!elements.has(id)) {
       let html = '';
       const element = {value:'', textContent:'', disabled:false, hidden:false, handlers:{},

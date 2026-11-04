@@ -165,6 +165,13 @@ function updateModelLabels() {
   window.ScholarWorkspace?.updateOAuthStatus();
 }
 function openModelSettings() {
+  if (!Object.keys(state.providers).length) {
+    notify(
+      "Provider settings are unavailable. Refresh the workspace to reconnect.",
+      true,
+    );
+    return;
+  }
   $("providerSelect").value = state.provider;
   if (state.providers[state.provider]) populateConnection(state.provider);
   openDialog("modelDialog");
@@ -352,7 +359,8 @@ async function startResearch(event) {
   if (error) {
     $("formError").textContent = error;
     $("formError").hidden = false;
-    $("queryInput").setAttribute("aria-invalid", "true");
+    if (query.length < 3) $("queryInput").setAttribute("aria-invalid", "true");
+    else $("queryInput").removeAttribute("aria-invalid");
     if (
       !state.model ||
       (!$("includeAcademic").checked && !$("includeWeb").checked)
@@ -475,6 +483,7 @@ function connectStream(jobId) {
 }
 function schedulePoll(jobId) {
   clearTimeout(state.pollTimer);
+  if (document.body.classList.contains("workspace-locked")) return;
   state.pollTimer = setTimeout(() => pollJob(jobId), 3000);
 }
 async function pollJob(jobId) {
@@ -850,6 +859,11 @@ async function exportReport(format) {
       try {
         data = await res.json();
       } catch {}
+      if (
+        res.status === 401 &&
+        data.detail === "Unlock this workspace to continue."
+      )
+        window.NoevraProviders?.requireUnlock();
       throw new Error(apiMessage(data));
     }
     const blob = await res.blob();
@@ -889,6 +903,8 @@ function bindEvents() {
     const action = event.target.closest("[data-action]")?.dataset.action;
     if (action === "new") newResearch();
     if (action === "settings") window.ScholarWorkspace.openSettings();
+    if (action === "connections")
+      window.ScholarWorkspace.openSettings("connections");
     if (action === "model") openModelSettings();
     if (action === "manage-model") {
       $("settingsDialog").close();

@@ -24,7 +24,7 @@
   --rail: #f0f2ed;
   --ink: #252b27;
   --secondary: #626a64;
-  --muted: #717970;
+  --muted: #687163;
   --line: #dfe3dc;
   --line-strong: #c6cdc3;
   --accent: #405749;
@@ -2260,7 +2260,7 @@ select {
   min-height: 0;
   padding-top: 1px;
   padding-bottom: 1px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .depth-control {
   min-height: 32px;
@@ -2278,25 +2278,25 @@ select {
   margin-top: 25px;
 }
 .model-control {
-  font-size: 11px;
+  font-size: 12px;
 }
 .composer-caption {
-  font-size: 11px;
+  font-size: 12px;
 }
 .recent-item {
   font-size: 12px;
 }
 .rail-section-heading {
-  font-size: 11px;
+  font-size: 12px;
 }
 .connection-button small {
-  font-size: 11px;
+  font-size: 12px;
 }
 .new-research kbd {
-  font-size: 11px;
+  font-size: 12px;
 }
 .rail-note {
-  font-size: 11px;
+  font-size: 12px;
 }
 .source-item p,
 .evidence-explanation,
@@ -2338,10 +2338,10 @@ select {
 }
 .report-article details pre {
   margin-bottom: 0;
-  font-size: 11px;
+  font-size: 12px;
 }
 .report-article details pre code {
-  font-size: 11px;
+  font-size: 12px;
 }
 .citation {
   min-width: 20px;
@@ -2364,11 +2364,11 @@ select {
     font-size: 12px;
   }
   .depth-control select {
-    font-size: 11px;
+    font-size: 12px;
     max-width: 145px;
   }
   .model-control {
-    font-size: 11px;
+    font-size: 12px;
     padding-left: 6px;
   }
   .model-control > span:nth-child(2) {
@@ -2382,10 +2382,10 @@ select {
     align-items: flex-end;
   }
   .composer-caption {
-    font-size: 11px;
+    font-size: 12px;
   }
   .suggestion-category {
-    font-size: 11px;
+    font-size: 12px;
     width: 76px;
   }
   .suggestion {
@@ -2399,18 +2399,18 @@ select {
     font-size: 12px;
   }
   .workspace-footer {
-    font-size: 11px;
+    font-size: 12px;
     align-items: flex-start;
   }
   .workspace-footer > .text-button {
-    font-size: 11px;
+    font-size: 12px;
     max-width: 120px;
     padding: 0;
     line-height: 1.6;
     flex-shrink: 0;
   }
   .breadcrumbs {
-    font-size: 11px;
+    font-size: 12px;
   }
   .icon-button {
     min-width: 36px;
@@ -2424,7 +2424,7 @@ select {
   .connection-status,
   .collection-fields small,
   .dialog-footer > span {
-    font-size: 11px;
+    font-size: 12px;
   }
   .dialog-footer > span {
     max-width: 180px;
@@ -2438,7 +2438,7 @@ select {
   .report-meta,
   .report-stats,
   .report-tabs button {
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 /* Shared authored listbox: the native select remains the form's value owner. */
@@ -2564,7 +2564,7 @@ select.enhanced-select {
   min-height: 24px;
   background: transparent;
   border: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--accent);
   font-weight: 650;
   gap: 7px;
@@ -2628,12 +2628,12 @@ select.enhanced-select {
   min-width: 0;
 }
 .connection-button .settings-copy strong {
-  font-size: 11px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .connection-button .settings-copy small {
   max-width: none;
-  font-size: 11px;
+  font-size: 12px;
 }
 .sidebar-collapsed {
   --rail-width: 76px;
@@ -2744,7 +2744,7 @@ select.enhanced-select {
 .preference-toggle small {
   display: block;
   color: var(--secondary);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.8;
   margin-top: 3px;
 }
@@ -2804,7 +2804,7 @@ select.enhanced-select {
   font-size: 12px;
 }
 .account-connection p {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--secondary);
   margin-top: 2px;
 }
@@ -2821,14 +2821,14 @@ select.enhanced-select {
   border-radius: 9px;
 }
 .oauth-connection p {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.85;
   color: var(--secondary);
   margin-top: 10px;
 }
 .oauth-connection > a {
   display: inline-block;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--accent);
   margin-top: 10px;
 }
@@ -2895,10 +2895,10 @@ select.enhanced-select {
     min-width: 24px;
   }
   .connection-button .settings-copy strong {
-    font-size: 11px;
+    font-size: 12px;
   }
   .connection-button .settings-copy small {
-    font-size: 11px;
+    font-size: 12px;
   }
   .document-layout {
     grid-template-columns: minmax(0, 1fr) 170px;
@@ -2926,7 +2926,7 @@ select.enhanced-select {
   }
   .settings-navigation button {
     white-space: nowrap;
-    font-size: 11px;
+    font-size: 12px;
     padding: 9px 10px;
   }
   .workspace-settings-content {
@@ -2941,7 +2941,7 @@ select.enhanced-select {
     font-size: 14px;
   }
   .depth-control .select-trigger {
-    font-size: 11px;
+    font-size: 12px;
     min-height: 26px;
   }
   .select-options [role="option"] {
@@ -2955,13 +2955,13 @@ select.enhanced-select {
     gap: 10px;
   }
   .account-connection p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .workspace-settings-dialog .dialog-footer {
     align-items: center;
   }
   .workspace-settings-dialog .dialog-footer > span {
-    font-size: 11px;
+    font-size: 12px;
     max-width: 150px;
   }
   .document-margin {
@@ -2992,7 +2992,7 @@ select.enhanced-select {
     flex-direction: column;
   }
   .document-margin .margin-note {
-    font-size: 11px;
+    font-size: 12px;
   }
   .report-article {
     max-width: 100%;
@@ -3025,7 +3025,7 @@ select.enhanced-select {
     text-overflow: ellipsis;
     overflow: hidden;
     border: 1px solid var(--line);
-    font-size: 11px;
+    font-size: 12px;
     padding: 7px 10px;
   }
   #reportToc a.active {
@@ -3064,7 +3064,7 @@ select.enhanced-select {
   cursor: pointer;
 }
 .provider-row:hover {
-  background: var(--surface-alt, rgba(120, 120, 100, 0.06));
+  background: var(--soft);
 }
 .provider-row > span:nth-child(2) {
   flex: 1;
@@ -3080,7 +3080,7 @@ select.enhanced-select {
   opacity: 0.75;
 }
 .provider-row .auth-method {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   margin-top: 4px;
@@ -3105,7 +3105,7 @@ select.enhanced-select {
   overflow-wrap: anywhere;
 }
 #unlockError {
-  color: var(--danger, #a33);
+  color: var(--error);
 }
 
 .advanced-model {
@@ -3119,4 +3119,39 @@ select.enhanced-select {
 }
 .advanced-model[open] summary {
   margin-bottom: 8px;
+}
+
+.workspace-setup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0 0;
+  color: var(--secondary);
+  font-size: 12px;
+}
+.workspace-setup .text-button {
+  flex-shrink: 0;
+  min-height: 44px;
+}
+.workspace-locked .rail,
+.workspace-locked .app-main {
+  visibility: hidden;
+}
+@media (max-width: 480px) {
+  .workspace-setup {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0;
+  }
+  .dialog-footer {
+    flex-wrap: wrap;
+  }
+}
+@media (pointer: coarse) {
+  .icon-button,
+  .text-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }

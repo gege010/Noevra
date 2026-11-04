@@ -19,3 +19,6 @@ dist/
 *.egg-info/
 .ruff_cache/
 coverage.xml
+
+/output/package-check/
+/output/engineering-check/

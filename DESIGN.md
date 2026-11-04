@@ -27,3 +27,7 @@ The rail keeps icon navigation and a labeled expand control when minimized, pers
 
 ## Provider and navigation contract
 Connections lists all eight providers with truthful connection/catalog states. Detail screens contain credentials, supported OAuth, policy notes and a return to the inventory. Research setup contains provider and account-specific model selection, catalog search/refresh, and source choices. Research defaults changes future investigations. Search filtering never commits a different model until the user selects it. Failed catalog refresh clears unavailable selections. Settings categories retain their selected state; contextual links open Connections directly. OAuth is supported for OpenRouter, local ChatGPT plan access and server-configured Google Cloud Gemini access; Claude subscription OAuth is not offered because Anthropic prohibits this use.
+
+
+## Local first-run refinement
+An unconnected workspace offers one inline Connect a provider action beside the question composer, routing directly to Connections. No onboarding modal blocks an unprotected local workspace. Model search remains a view operation until a model is explicitly selected. Password-protected workspaces expose Lock workspace in Settings; locking reloads the tab to clear credentials, and locked content is hidden. Session expiry pauses observation until re-authentication. Supporting metadata uses at least 12px and placeholders use the muted green token with AA contrast on the light paper surface; coarse-pointer controls have 44px minimum targets.

@@ -298,6 +298,21 @@
                 >
               </div>
               <p class="form-error" id="formError" role="alert" hidden></p>
+              <div class="workspace-setup" id="connectionHint" role="status">
+                <span id="connectionHintText"
+                  >Connect a model provider to start your first
+                  investigation.</span
+                ><button
+                  class="text-button"
+                  data-action="connections"
+                  id="connectWorkspaceBtn"
+                  type="button"
+                >
+                  Connect a provider<svg class="icon">
+                    <use href="#i-arrow" />
+                  </svg>
+                </button>
+              </div>
             </form>
             <section class="starting-points" aria-labelledby="startingTitle">
               <div class="section-heading">
@@ -775,12 +790,17 @@
           data-close="connectionDialog"
           aria-label="Close connection"
         >
-          Close
+          <svg class="icon" aria-hidden="true"><use href="#i-close" /></svg>
         </button>
       </div>
       <div class="settings-body">
         <section class="settings-section">
-          <div class="connection-status" id="connectionStatus"></div>
+          <div
+            class="connection-status"
+            id="connectionStatus"
+            role="status"
+            aria-live="polite"
+          ></div>
           <div class="oauth-connection" id="oauthConnection" hidden>
             <button
               class="secondary-button"
@@ -810,11 +830,12 @@
           </div>
           <div class="field">
             <label for="apiKeyInput"
-              >API key <span>Optional override</span></label
+              >API key <span id="apiKeyRequirement">Required</span></label
             >
             <div class="password-field">
               <input
                 id="apiKeyInput"
+                aria-describedby="connectionStatus"
                 type="password"
                 autocomplete="off"
                 placeholder="Paste your provider API key"
@@ -1006,6 +1027,8 @@
       </div>
       <div class="dialog-footer">
         <span>Saved on this browser. Credentials are excluded.</span
+        ><button class="text-button" id="lockWorkspaceBtn" type="button" hidden>
+          Lock workspace</button
         ><button class="primary-button" data-close="settingsDialog">
           Close settings<svg class="icon"><use href="#i-check" /></svg>
         </button>
