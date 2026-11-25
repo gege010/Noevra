@@ -25,6 +25,18 @@ def test_research_request_valid():
     assert req.sources_limit == 20
 
 
+def test_research_request_uses_configured_provider_and_model(monkeypatch):
+    from src.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "default_provider", "ollama")
+    monkeypatch.setattr(get_settings(), "llm_model", "local-model")
+    req = ResearchRequest(query="Compare solar and sidereal days")
+    assert (req.provider, req.model) == ("ollama", "local-model")
+    with pytest.raises(ValidationError, match="Choose a model"):
+        ResearchRequest(query=req.query, provider="groq")
+    assert ResearchRequest(query=req.query, provider="groq", model="chosen").model == "chosen"
+
+
 def test_research_request_query_too_short():
     with pytest.raises(ValidationError):
         ResearchRequest(query="AI")

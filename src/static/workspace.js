@@ -1,7 +1,7 @@
 /* Durable non-secret preferences, report wayfinding, and tab-scoped OAuth. */
 (function (root) {
   const defaults = {
-    theme: "light",
+    theme: "dark",
     reading: "standard",
     collapsed: false,
     motion: false,
@@ -53,6 +53,8 @@
           : "light"
         : preferences.theme;
     document.documentElement.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]').content =
+      theme === "dark" ? "#17191b" : "#f7f8f7";
     document.documentElement.dataset.readingSize = preferences.reading;
     document.documentElement.dataset.reduceMotion = String(preferences.motion);
     $("appearanceTheme").value = preferences.theme;
@@ -185,7 +187,7 @@
       for (const key of ["collapsed", "motion"])
         if (typeof saved[key] === "boolean") preferences[key] = saved[key];
       if (!["light", "dark", "system"].includes(preferences.theme))
-        preferences.theme = "light";
+        preferences.theme = "dark";
       if (!["standard", "large", "extra"].includes(preferences.reading))
         preferences.reading = "standard";
       if (!["quick", "standard", "deep"].includes(preferences.depth))

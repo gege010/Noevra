@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="referrer" content="no-referrer" />
-    <meta name="theme-color" content="#f8f9f6" />
+    <meta name="theme-color" content="#17191b" />
     <meta
       name="description"
       content="A considered space for deep research. Explore questions, inspect evidence, and build source-grounded reports with your choice of AI model."
@@ -24,7 +24,9 @@
       type="font/ttf"
       crossorigin
     />
-    <link rel="stylesheet" href="/static/app.css" />
+    <script src="/static/appearance.js?v=20261105c"></script>
+    <link rel="stylesheet" href="/static/app.css?v=20261105c" />
+    <link rel="stylesheet" href="/static/atlas.css?v=4" />
     <link rel="stylesheet" href="/static/vendor/katex/katex.min.css" />
     <script src="/static/vendor/markdown-it/markdown-it.min.js" defer></script>
     <script src="/static/vendor/katex/katex.min.js" defer></script>
@@ -33,9 +35,10 @@
       defer
     ></script>
     <script src="/static/controls.js" defer></script>
+    <script src="/static/ascii-backdrop.js" defer></script>
     <script src="/static/oauth.js" defer></script>
-    <script src="/static/app.js" defer></script>
-    <script src="/static/workspace.js" defer></script>
+    <script src="/static/app.js?v=20261125" defer></script>
+    <script src="/static/workspace.js?v=20261105c" defer></script>
     <script src="/static/providers.js" defer></script>
   </head>
   <body>
@@ -151,7 +154,7 @@
         <svg class="icon"><use href="#i-plus" /></svg><span>New research</span
         ><kbd>Ctrl K</kbd>
       </button>
-      <nav class="primary-nav">
+      <nav class="primary-nav" aria-label="Workspace navigation">
         <button
           class="nav-link active"
           data-view="home"
@@ -187,10 +190,6 @@
         </div>
       </div>
       <div class="rail-bottom">
-        <div class="rail-note">
-          <svg class="icon"><use href="#i-book" /></svg>
-          <p>Every conclusion deserves<br />a source you can inspect.</p>
-        </div>
         <button
           class="connection-button"
           data-action="settings"
@@ -201,8 +200,8 @@
             ><svg class="icon"><use href="#i-sliders" /></svg
           ></span>
           <span class="settings-copy"
-            ><strong>Settings & customization</strong
-            ><small>Make the workspace yours</small></span
+            ><strong>Workspace settings</strong
+            ><small>Appearance, defaults & connections</small></span
           >
         </button>
       </div>
@@ -220,6 +219,9 @@
           ><strong id="pageLabel">New research</strong>
         </div>
         <div class="topbar-actions">
+          <button class="text-button connections-shortcut" data-action="connections" aria-label="Connections" title="Connections">
+            <svg class="icon"><use href="#i-sliders" /></svg><span>Connections</span>
+          </button>
           <button
             class="text-button help-button"
             id="howItWorksBtn"
@@ -239,85 +241,85 @@
       </header>
       <main id="mainContent" tabindex="-1">
         <section id="homeView" class="view home-view">
+          <div class="ascii-backdrop" aria-hidden="true"><img src="/static/evidence-orbit.svg?v=1" alt="" width="532" height="372" /></div>
           <div class="question-workspace">
-            <div class="home-intro">
-              <h1>A little curiosity.<br /><em>A deeper understanding.</em></h1>
-              <p>
-                A space to explore complex questions.<br class="mobile-break" />
-                Grounded in sources, open to discovery.
-              </p>
-            </div>
-            <form id="researchForm" novalidate>
-              <div class="composer" id="composer">
-                <label class="sr-only" for="queryInput"
-                  >Your research question</label
-                ><textarea
-                  id="queryInput"
-                  placeholder="What would you like to understand?"
-                  rows="3"
-                  maxlength="1500"
-                  aria-describedby="questionHint formError"
-                ></textarea>
-                <div class="composer-bottom">
-                  <div class="composer-options">
-                    <label class="depth-control"
-                      ><svg class="icon"><use href="#i-search" /></svg
-                      ><select id="depthSelect" aria-label="Research depth">
-                        <option value="quick">Quick brief</option>
-                        <option value="standard" selected>
-                          In-depth research
-                        </option>
-                        <option value="deep">Deep investigation</option></select
-                      ><svg class="icon chevron">
-                        <use href="#i-chevron" /></svg></label
-                    ><button
-                      type="button"
-                      class="model-control"
-                      data-action="model"
+            <div class="atlas-field">
+              <div class="home-intro">
+                <h1>What will you explore?</h1>
+                <p>Ask a question to build a report with sources you can inspect.</p>
+              </div>
+              <form id="researchForm" novalidate>
+                <div class="composer" id="composer">
+                  <label class="composer-label" for="queryInput"
+                    >Your research question</label
+                  ><textarea
+                    id="queryInput"
+                    placeholder="What would you like to understand?"
+                    rows="3"
+                    maxlength="1500"
+                    aria-describedby="questionHint formError"
+                  ></textarea>
+                  <div class="composer-bottom">
+                    <div class="composer-options">
+                      <label class="depth-control"
+                        ><svg class="icon"><use href="#i-search" /></svg
+                        ><select id="depthSelect" aria-label="Research depth">
+                          <option value="quick">Quick brief</option>
+                          <option value="standard" selected>
+                            In-depth research
+                          </option>
+                          <option value="deep">Deep investigation</option></select
+                        ><svg class="icon chevron">
+                          <use href="#i-chevron" /></svg></label
+                      ><button
+                        type="button"
+                        class="model-control"
+                        data-action="model"
+                      >
+                        <span class="model-dot"></span
+                        ><span id="composerModel">Choose model</span
+                        ><svg class="icon chevron"><use href="#i-chevron" /></svg>
+                      </button>
+                    </div>
+                    <button
+                      type="submit"
+                      class="send-button"
+                      id="startResearchBtn"
+                      aria-label="Start research"
                     >
-                      <span class="model-dot"></span
-                      ><span id="composerModel">Choose model</span
-                      ><svg class="icon chevron"><use href="#i-chevron" /></svg>
+                      <span>Research</span><svg class="icon"><use href="#i-arrow" /></svg>
                     </button>
                   </div>
-                  <button
-                    type="submit"
-                    class="send-button"
-                    id="startResearchBtn"
-                    aria-label="Start research"
+                </div>
+                <div class="composer-caption">
+                  <span id="questionHint"
+                    >Include a topic, timeframe, or comparison.</span
+                  ><span class="keyboard-hint"
+                    ><kbd>Ctrl</kbd> + <kbd>Enter</kbd> to research</span
                   >
-                    <svg class="icon"><use href="#i-up" /></svg>
+                </div>
+                <p class="form-error" id="formError" role="alert" hidden></p>
+                <div class="workspace-setup" id="connectionHint" role="status">
+                  <span id="connectionHintText"
+                    >Connect a model provider to start your first
+                    investigation.</span
+                  ><button
+                    class="text-button"
+                    data-action="connections"
+                    id="connectWorkspaceBtn"
+                    type="button"
+                  >
+                    Connect a provider<svg class="icon">
+                      <use href="#i-arrow" />
+                    </svg>
                   </button>
                 </div>
-              </div>
-              <div class="composer-caption">
-                <span id="questionHint"
-                  >Follow the evidence. Keep the uncertainty.</span
-                ><span class="keyboard-hint"
-                  ><kbd>Ctrl</kbd> + <kbd>Enter</kbd> to research</span
-                >
-              </div>
-              <p class="form-error" id="formError" role="alert" hidden></p>
-              <div class="workspace-setup" id="connectionHint" role="status">
-                <span id="connectionHintText"
-                  >Connect a model provider to start your first
-                  investigation.</span
-                ><button
-                  class="text-button"
-                  data-action="connections"
-                  id="connectWorkspaceBtn"
-                  type="button"
-                >
-                  Connect a provider<svg class="icon">
-                    <use href="#i-arrow" />
-                  </svg>
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
             <section class="starting-points" aria-labelledby="startingTitle">
               <div class="section-heading">
-                <h2 id="startingTitle">A few places to begin</h2>
-                <span>Make a question your own</span>
+                <h2 id="startingTitle">Try a research question</h2>
+                <span>Select one to edit</span>
               </div>
               <div class="suggestion-list">
                 <button
@@ -344,37 +346,12 @@
                   data-domain="economics"
                 >
                   <span class="suggestion-category">Economics</span
-                  ><span>The real trade-offs behind carbon pricing</span
+                  ><span>How does carbon pricing affect industry?</span
                   ><svg class="icon"><use href="#i-arrow" /></svg>
                 </button>
               </div>
             </section>
-            <div class="research-principle">
-              <div class="principle-symbol">
-                <svg class="icon"><use href="#i-leaf" /></svg>
-              </div>
-              <p>
-                <strong>Depth, with a paper trail.</strong> Explore academic
-                literature and the open web. Trace claims back to their sources,
-                including what the evidence leaves unanswered.
-              </p>
-              <button
-                class="icon-button"
-                data-action="how"
-                aria-label="Learn about evidence and research"
-              >
-                <svg class="icon"><use href="#i-arrow" /></svg>
-              </button>
-            </div>
           </div>
-          <footer class="workspace-footer">
-            <span>Independent thinking. Informed by evidence.</span
-            ><button class="text-button" data-action="settings">
-              Your model. Your choice.<svg class="icon">
-                <use href="#i-sliders" />
-              </svg>
-            </button>
-          </footer>
         </section>
         <section id="runningView" class="view running-view" hidden>
           <div class="running-header">
@@ -1095,6 +1072,9 @@
           <svg class="icon"><use href="#i-close" /></svg>
         </button>
       </div>
+      <button class="nav-link active" data-view="home" aria-current="page">
+        <svg class="icon"><use href="#i-search" /></svg>Research
+      </button>
       <button class="nav-link" data-action="new">
         <svg class="icon"><use href="#i-plus" /></svg>New research</button
       ><button
@@ -1105,7 +1085,7 @@
       >
         <svg class="icon"><use href="#i-book" /></svg>Research library</button
       ><button class="nav-link" data-action="settings">
-        <svg class="icon"><use href="#i-sliders" /></svg>Model & preferences
+        <svg class="icon"><use href="#i-sliders" /></svg>Workspace settings
       </button>
     </dialog>
     <div

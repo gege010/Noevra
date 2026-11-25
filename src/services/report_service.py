@@ -3,6 +3,7 @@
 from __future__ import annotations
 import base64
 import re
+import unicodedata
 from pathlib import Path
 from datetime import datetime
 import structlog
@@ -67,10 +68,32 @@ class ReportService:
         pdf.add_page()
 
         # Title
-        first_line = markdown_text.split("\n", 1)[0].lstrip("# ").strip()
         pdf.set_font("Workspace", "B", 16)
         pdf.set_text_color(22, 33, 62)
         pdf.set_margins(20, 20, 20)
+        # Preserve information even when the bundled typeface lacks a symbol.
+        glyphs = pdf.current_font.cmap
+        for pattern, marker in ((r"[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]+", "^"), (r"[₀₁₂₃₄₅₆₇₈₉₊₋]+", "_")):
+
+            def render_index(match, marker=marker):
+                run = match.group()
+                if all(ord(char) in glyphs for char in run):
+                    return run
+                value = unicodedata.normalize("NFKC", run).replace("−", "-")
+                return f"{marker}({value})"
+
+            markdown_text = re.sub(pattern, render_index, markdown_text)
+        substitutions = {}
+        for char in set(markdown_text):
+            if ord(char) in glyphs or char in "\r\n\t":
+                continue
+            if char.isspace():
+                replacement = " "
+            else:
+                replacement = "[" + unicodedata.name(char, f"U+{ord(char):04X}").lower() + "]"
+            substitutions[ord(char)] = replacement
+        markdown_text = markdown_text.translate(substitutions)
+        first_line = markdown_text.split("\n", 1)[0].lstrip("# ").strip()
         safe_line(first_line)
         pdf.ln(4)
 

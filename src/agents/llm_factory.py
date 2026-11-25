@@ -57,6 +57,12 @@ def create_llm(
         return ChatGroq(
             api_key=key,
             model=model_name,
+            # Reserve completion space for both reasoning and the research report.
+            **(
+                {"max_tokens": 16384, "reasoning_effort": "low"}
+                if model_name.startswith("openai/gpt-oss-")
+                else {}
+            ),
             temperature=temperature,
             streaming=streaming,
         )

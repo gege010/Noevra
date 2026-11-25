@@ -137,7 +137,7 @@ async def serve_index():
     """Serve the Noevra Web Workbench."""
     index_file = static_dir / "index.html"
     if index_file.exists():
-        return FileResponse(index_file)
+        return FileResponse(index_file, headers={"Cache-Control": "no-cache"})
     return {"name": "Noevra", "version": "2.0.0", "docs": "/docs"}
 
 

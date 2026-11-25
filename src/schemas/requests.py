@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 from typing import Literal
+from src.config import get_settings
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -10,11 +11,11 @@ class ResearchRequest(BaseModel):
         ..., min_length=3, max_length=1500, description="Research topic, hypothesis, or inquiry"
     )
     provider: str = Field(
-        default="groq",
+        default_factory=lambda: get_settings().default_provider,
         description="LLM provider (groq, openai, anthropic, gemini, deepseek, openrouter, ollama, custom)",
     )
     model: str = Field(
-        default="llama-3.3-70b-versatile",
+        default_factory=lambda: get_settings().llm_model,
         min_length=1,
         max_length=256,
         description="Model identifier",
@@ -48,6 +49,14 @@ class ResearchRequest(BaseModel):
     include_academic: bool = Field(default=True)
     include_web: bool = Field(default=True)
     output_format: str = Field(default="both", pattern="^(markdown|pdf|both)$")
+
+    @model_validator(mode="before")
+    @classmethod
+    def require_model_for_other_providers(cls, data):
+        if isinstance(data, dict) and "provider" in data and "model" not in data:
+            if data["provider"] != get_settings().default_provider:
+                raise ValueError("Choose a model for the selected provider")
+        return data
 
     @model_validator(mode="after")
     def validate_sources(self):
@@ -88,7 +97,7 @@ class ResearchRequest(BaseModel):
                 {
                     "query": "Impact of transformer architecture on modern NLP",
                     "provider": "groq",
-                    "model": "llama-3.3-70b-versatile",
+                    "model": "openai/gpt-oss-20b",
                     "depth": "standard",
                     "domain_focus": "cs_ai",
                     "citation_style": "ieee",

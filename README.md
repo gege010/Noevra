@@ -1,12 +1,12 @@
 # Noevra
 
-A local, provider-independent research workspace. Ask a question, follow the five-stage research process, and inspect the report, evidence, source passages and unresolved findings.
-
 [![CI](https://github.com/gege010/Noevra/actions/workflows/ci.yml/badge.svg)](https://github.com/gege010/Noevra/actions/workflows/ci.yml)
 
-## Run locally
+Noevra is a local research workspace for turning a question into a cited report. Open a finding to inspect its supporting passages, check the original sources, and see which questions the evidence leaves unresolved. Your investigations stay in a searchable SQLite library.
 
-Install **Python 3.11 or newer** and Git. CI is configured for Python 3.11/3.12 on Windows and Linux. Then:
+## Quick start
+
+Install Git and Python 3.11 or 3.12, then run the following commands.
 
 ```sh
 git clone https://github.com/gege010/Noevra.git
@@ -14,125 +14,51 @@ cd Noevra
 python run.py
 ```
 
-On Windows, use `py -3.11 run.py` if `python` is not available. On macOS/Linux, use `python3 run.py` when appropriate.
+Open **http://127.0.0.1:8000**. The first launch downloads dependencies into a project-local virtual environment. Later launches reuse it. On Windows you can use `py -3.11 run.py`. On macOS or Linux use `python3 run.py` if needed. Press **Ctrl+C** to stop the server.
 
-The first run creates `.venv` and installs the tested dependencies, so it needs internet access and may take several minutes. Later runs reuse the environment. No activation, Node.js, Docker, Redis, external database, or `.env` file is required. The launcher never overwrites your `.env`, existing `venv/`, or research data.
+## Run your first investigation
 
-Open **http://127.0.0.1:8000**. Stop the application with **Ctrl+C**.
+1. Open **Connections**, select a provider, and discover the models available to your account. You can also use a running Ollama or custom OpenAI-compatible endpoint.
+2. Enter a question or select an editable example. Choose a research depth and model, then select **Research**.
+3. Follow the five stages from planning to review. Open **Evidence** to inspect the passages behind a claim and **Sources** to visit the originals.
+4. Reopen the investigation from **Library**. Export the report as Markdown or PDF, or download its references as BibTeX.
 
-```sh
-python run.py --install      # Install/update without starting the server
-python run.py --check        # Check configuration and writable storage; no provider calls
-python run.py --port 8001    # Use another port when 8000 is occupied
-```
+The workspace starts without credentials. Running research requires a model connection and network access for source retrieval. Model and search providers may charge for requests. Even with local inference, enabled source searches reach external services. Check the original sources before relying on a finding.
 
-Only one application process may use a local research database at a time. To run a separate workspace, set a different `NOEVRA_DATA_DIR` and port; changing the port alone does not create a separate database.
+## Configuration and storage
 
-## Your first investigation
-
-1. Open **Settings & customization → Connections**.
-2. Choose a provider. Enter its API key, use supported OAuth, or connect a running Ollama/OpenAI-compatible server.
-3. Select **Save & discover models**, then **Choose a model**. The list comes from that connection; search it by name or model ID.
-4. Enter a research question, choose depth and source collections, then start.
-5. Inspect **Report**, **Evidence**, **Sources**, and **Research process**. Download Markdown, PDF or BibTeX as needed.
-
-The interface opens without a model account. Actual research needs a working model connection and internet access for source retrieval. A local LLM keeps inference local; academic/web searches still contact their source services. AI provider and search charges depend on your account and plan. OAuth is an account connection, not free inference.
-
-Provider keys entered in the interface remain in tab memory. Reloading requires reconnection. For optional server credentials, copy `.env.example` to `.env` and fill only the providers you use. Restart after editing `.env`. Never commit this file.
-
-| Connection | Authentication |
+| Task | Where to start |
 | --- | --- |
-| Groq, DeepSeek | API key |
-| OpenAI | API key; official local ChatGPT plan OAuth with a `127.0.0.1` callback |
-| Anthropic | API key; Claude.ai subscription OAuth is not supported for this third-party use |
-| Google Gemini | API key; Google OAuth when a web client and quota project are configured |
-| OpenRouter | API key or PKCE OAuth |
-| Ollama / custom | OpenAI-compatible endpoint; optional API key |
+| Connect a hosted model | Choose Groq, OpenAI, Anthropic, Gemini, DeepSeek, or OpenRouter in Connections. The model picker uses the provider's catalog. |
+| Configure server-side credentials | Copy [.env.example](.env.example) to `.env`, fill the settings you need, and restart. Credentials entered through the browser last only for the current tab session. |
+| Choose where research is saved | Set `NOEVRA_DATA_DIR` and leave `DATABASE_URL` empty to use SQLite there. The local launcher defaults to `data/`. |
+| Back up the library | Stop the server and copy the complete data directory. Each running workspace needs its own database. |
+| Check a startup problem | Run `python run.py --check`. If the port is busy, try `python run.py --port 8001`. |
+| Run with Docker | With Docker Compose 2.24 or newer, run `docker compose up --build`. Compose stores research in a separate named volume. |
 
-See [deployment and provider requirements](DEPLOYMENT.md) for the exact OAuth policies and setup. Available models and inference quotas are determined by each provider, not a bundled model list.
+For OAuth setup, deployment settings, and hosting requirements, read the [deployment guide](DEPLOYMENT.md).
 
-## Data and backups
+## Development
 
-By default, the workspace stores SQLite history and report content in `data/` beside this README. The folder is created automatically and is ignored by Git; committed example reports are historical fixtures, not seeded library entries. Starting the repository from another working directory uses the same data location.
+FastAPI serves the HTML, CSS, and JavaScript workspace. A LangGraph workflow coordinates the planner, researcher, verifier, writer, and reviewer. See the [architecture](ARCHITECTURE.md) for the job lifecycle and the [interaction contract](UX-CONTRACT.md) for expected browser behavior.
 
-Set `NOEVRA_DATA_DIR` to choose another location. Leave `DATABASE_URL` empty to keep the SQLite database there. An explicit relative SQLite URL is resolved against the application root. Docker uses its own persistent volume.
-
-To back up the workspace, stop the application and copy the entire data directory. Downloads are generated from saved report content without a shared temporary export file. Restore the backup while the application is stopped. Local database files and server `.env` credentials rely on your operating system's file permissions; this is a personal workspace, not per-user encrypted storage.
-
-## Docker alternative
-
-With Docker and **Compose 2.24+** installed:
+Run `python run.py --install`, then activate `.venv` with `.\.venv\Scripts\Activate.ps1` in PowerShell or `source .venv/bin/activate` in Bash. Install the development dependencies and run the same core checks as CI. The JavaScript tests require Node.js 22.
 
 ```sh
-docker compose up --build
-```
-
-Open http://127.0.0.1:8000. `.env` is optional. A named volume persists container data across restarts and rebuilds; it is separate from the Python launcher's `data/`. Use `docker compose down` to stop the stack. Do not remove the data volume when you intend to retain history.
-
-When a workspace password is configured, use **Lock workspace** in Settings to sign out and clear tab credentials.
-
-The image runs as a non-root user and the port is bound to loopback. This container is for a single private workspace. See [DEPLOYMENT.md](DEPLOYMENT.md) before exposing it to other people or hosting it publicly.
-
-## Troubleshooting
-
-| Symptom | Action |
-| --- | --- |
-| Python command is missing | Install Python 3.11+; on Windows enable the launcher or PATH option. |
-| Installation failed | Check internet/proxy access and folder permissions, then run `python run.py --install`. Linux distributions may require their `python3-venv` package. |
-| Port 8000 is occupied | Stop the previous process, or choose `--port 8001`. A second Noevra process needs separate data storage. |
-| Database is already in use | Stop the existing Noevra process; the lock releases automatically when its process exits. |
-| Configuration check fails | Compare `.env` with `.env.example`; production requires HTTPS and workspace/session secrets. Do not paste secret values into bug reports. |
-| No models appear | Connect a provider and refresh its catalog. Check account permissions and local endpoint reachability. |
-| Ollama in Docker is unreachable | `localhost` refers to the container. On Docker Desktop use the host's reachable endpoint, commonly `http://host.docker.internal:11434/v1`, and configure the allowed origin when required. |
-| Provider returns 429 or a session expires | Wait for quota reset or reconnect. The app never silently switches to another paid provider. |
-| Research was interrupted | Reopen its status in Library. Restarted jobs are marked interrupted; start a new investigation after reconnecting. |
-
-## Development and checks
-
-The supported frontend is plain HTML/CSS/JavaScript served by FastAPI. Node.js is needed only for frontend utility tests, not to run Noevra. Development mode intentionally keeps one worker; automatic reload interrupts active research.
-
-After the launcher has installed the runtime:
-
-```sh
-# Windows
-.venv\Scripts\python -m pip install -r requirements-dev.txt -c constraints.txt
-.venv\Scripts\python -m pytest tests/unit
-.venv\Scripts\python -m ruff check src tests run.py
-
-# macOS / Linux
-.venv/bin/python -m pip install -r requirements-dev.txt -c constraints.txt
-.venv/bin/python -m pytest tests/unit
-.venv/bin/python -m ruff check src tests run.py
-
-# Node.js 22+ on either platform
+python -m pip install -r requirements-dev.txt -c constraints.txt
+python -m pip check
+python -m ruff check src tests run.py
+python -m ruff format --check src tests run.py
+python -m pytest tests/unit
 node --test tests/oauth-client.test.cjs tests/provider-picker.test.cjs tests/ui-renderer.test.cjs
 ```
 
-Tests use disposable databases, clear provider credentials from the test process, and block unmocked HTTP provider traffic. They do not spend your inference/search credits or alter your local research library. CI checks Windows and Linux on Python 3.11/3.12. Live OAuth consent, provider quotas and paid model quality require separate account-owner verification.
+Automated tests isolate storage and provider traffic. The [CI workflow](.github/workflows/ci.yml) also checks startup, compiles the source, and builds a wheel on Windows and Linux.
 
-For a manual environment, install `requirements.txt` with `constraints.txt`, then run `python -m src` or `python -m src --check`. The old Streamlit client is archived under `frontend/`; its optional dependencies are in `requirements-legacy.txt` and it is outside the supported startup flow.
+## Help and contributions
 
-## Architecture
-
-```mermaid
-flowchart LR
-    UI[Browser workspace] --> API[FastAPI validation and sessions]
-    API --> DB[(Local SQLite history)]
-    API --> R[Bounded job runtime]
-    R --> G[Planner → Researcher → Verifier → Writer → Reviewer]
-    G --> L[Selected model provider]
-    G --> S[Academic and web sources]
-    R --> DB
-    R --> E[SSE events / status polling]
-    E --> UI
-```
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for ownership, lifecycle and invariants; [ENGINEERING-REVIEW.md](ENGINEERING-REVIEW.md) for the audit and verification record; and [DESIGN.md](DESIGN.md) / [UX-CONTRACT.md](UX-CONTRACT.md) for UI conventions.
-
-## Research quality
-
-Sources can include academic metadata, abstracts, preprints and web pages; they are not all peer-reviewed or full text. Evidence status records what the retrieved corpus supports or leaves unresolved. Regex filtering is not a complete prompt-injection defense. Automated review is not scientific peer review, and successful generation does not establish that every claim is correct. Inspect original sources before relying on a report. PDF export preserves Unicode text but does not typeset TeX like a scientific publishing system.
+Maintained by [gege010](https://github.com/gege010). For help or bug reports, open a [GitHub issue](https://github.com/gege010/Noevra/issues) with your operating system, Python version, steps to reproduce, and expected result. Remove credentials and private research content from logs. For code changes, open a pull request describing the behavior and the checks you ran.
 
 ## License
 
-MIT; see [LICENSE](LICENSE). Fonts and vendored frontend libraries retain their licenses under `src/static/`.
+Noevra is distributed under the [MIT License](LICENSE). Bundled fonts and browser libraries include their own licenses in [src/static](src/static/).

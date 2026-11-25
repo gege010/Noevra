@@ -1,16 +1,16 @@
 # Noevra design system
 
 ## Direction
-Research atelier: the quiet working space between a university reading room and a contemporary document editor. Product interface, not a promotional landing page. The user delegated the direction for a complete replacement of the previous dark cockpit.
+Research atelier, refined in November 2026 toward dark graphite at the user's request. Neutral charcoal surfaces, precise sans-serif controls and a restrained sage editorial accent create a focused research instrument. Product interface, not a promotional landing page. Operate mode governs navigation and settings; Read mode governs reports.
 
 ## First viewport
-240px library rail, restrained utility header, spacious question-led workspace. A large Newsreader heading leads directly into a single composer. Configuration is progressively disclosed in a native dialog; eight providers never become eight decorative cards. Suggested questions are editorial rows. The signature is a continuous question-to-document experience: the same workspace becomes a progress journal, then a reader with an inspectable evidence margin.
+248px library rail and 72px utility header frame a single 680px question column. The ASCII illustration sits behind the home workspace and drifts with pointer movement. The backdrop does not intercept input and stays static with reduced motion.
 
 ## System
-Canonical runtime tokens: `src/static/app.css` `:root` and `[data-theme=dark]`. Light default: paper #f8f9f6, panel #ffffff, ink #252b27, secondary #626a64, olive #405749, line #dfe3dc. Dark reading mode uses equivalent semantic roles, not inverted images. Manrope for UI and Newsreader for editorial headings and reports, self-hosted under `src/static/fonts` with OFL licenses. No external font dependency.
+Canonical runtime tokens: `src/static/app.css` `:root` and `[data-theme=dark]`. Dark default: graphite #17191b, panel #202325, rail #121416, ink #eaeeeb, sage #b9d5c0, line #303638. Light mode: paper #f7f8f7, white panels, ink #262b2b and deep green #365a46. Existing explicit appearance choices are preserved. `appearance.js` resolves non-secret preferences before paint; `workspace.js` owns subsequent changes and browser chrome color. Manrope for interface headings and controls; Newsreader for the editorial phrase and report prose, self-hosted with OFL licenses.
 
 ## Layout and rhythm
-Rail 240px expanded or 76px minimized, content max 1080px, question area max 760px, reading prose max 70ch. Spacing roles 4/8/12/16/24/32/48/64px. Mobile below 760px uses a compact header and an accessible navigation dialog; composer controls wrap. Document tables scroll within their own wrapper.
+Rail 248px expanded or 76px minimized, content max 1080px outside home, home max 680px, reading prose max 70ch. Spacing roles 4/8/12/16/24/32/48/64px. Mobile below 760px uses a compact header and an accessible navigation dialog; composer controls wrap. Document tables scroll within their own wrapper.
 
 ## Controls and motion
 Single authored SVG stroke vocabulary. Shared authored listboxes backed by native form selects, semantic buttons and native dialogs. Corners: 8px for controls, 16px composer and panels. Focus rings olive, immediate pressed feedback, 160–220ms transitions, one brief workspace entrance, no looping ornament. Reduced motion disables nonessential movement. No emoji icons, gradients, neon status pills, fake scores or fabricated recent activity.

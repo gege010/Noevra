@@ -122,7 +122,7 @@ function showView(view) {
     report: "Research report",
     library: "Library",
   }[view];
-  document.querySelectorAll(".primary-nav [data-view]").forEach((b) => {
+  document.querySelectorAll(".primary-nav [data-view], #navigationDialog [data-view]").forEach((b) => {
     const active = b.dataset.view === (view === "library" ? "library" : "home");
     b.classList.toggle("active", active);
     if (active) b.setAttribute("aria-current", "page");
@@ -144,6 +144,7 @@ function newResearch() {
   state.report = null;
   state.query = "";
   $("queryInput").value = "";
+  $("queryInput").removeAttribute("aria-invalid");
   $("formError").hidden = true;
   window.ScholarWorkspace?.applyDefaults();
   showView("home");
@@ -930,7 +931,10 @@ function bindEvents() {
     const suggestion = event.target.closest("[data-query]");
     if (suggestion) {
       $("queryInput").value = suggestion.dataset.query;
+      $("queryInput").removeAttribute("aria-invalid");
+      $("formError").hidden = true;
       $("domainSelect").value = suggestion.dataset.domain;
+      window.ScholarControls?.sync();
       $("queryInput").focus();
     }
     const citation = event.target.closest("[data-citation]");
@@ -1047,9 +1051,6 @@ function bindEvents() {
 }
 async function init() {
   try {
-    const theme = localStorage.getItem("scholar_theme");
-    if (["light", "dark"].includes(theme))
-      document.documentElement.dataset.theme = theme;
     for (const key of Object.keys(localStorage))
       if (key.startsWith("scholar_key_")) localStorage.removeItem(key);
   } catch {}

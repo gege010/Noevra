@@ -145,7 +145,7 @@ def normalize_models(provider: str, payload: dict, auth_type: str) -> list[dict]
             provider in ("openai", "groq")
             and auth_type != "oauth"
             and re.search(
-                r"embedding|whisper|tts|dall-e|sora|transcrib|image-|moderation|realtime|audio|babbage|davinci|guard",
+                r"embedding|whisper|orpheus|tts|dall-e|sora|transcrib|image-|moderation|realtime|audio|babbage|davinci|guard",
                 identifier,
             )
         ):
