@@ -4,6 +4,8 @@
 
 Noevra is a local research workspace for turning a question into a cited report. Open a finding to inspect its supporting passages, check the original sources, and see which questions the evidence leaves unresolved. Your investigations stay in a searchable SQLite library.
 
+![Noevra research workspace showing the question editor, depth and model selectors, and three example research questions](docs/images/research-workspace.png)
+
 ## Quick start
 
 Install Git and Python 3.11 or 3.12, then run the following commands.
